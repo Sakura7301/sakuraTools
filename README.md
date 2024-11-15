@@ -1,6 +1,4 @@
-# sakuraTools当然可以！下面是这个 `sakuraTools` 插件的 README 文档示例，你可以根据需要进行调整和完善。
 
----
 
 # sakuraTools 插件
 
