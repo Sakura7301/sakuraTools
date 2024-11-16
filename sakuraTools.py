@@ -3,12 +3,16 @@ import re
 import io  
 import plugins  
 import requests  
+from PIL import Image  
 from config import conf  
 from datetime import datetime  
 from bridge.context import ContextType  
 from bridge.reply import Reply, ReplyType  
 from common.log import logger  
 from plugins import *  
+from selenium import webdriver  
+from selenium.webdriver.common.by import By  
+from selenium.webdriver.common.keys import Keys
 
 
 @plugins.register(  
@@ -34,6 +38,7 @@ class sakuraTools(Plugin):
         self.chongbuluo_url = "https://api.vvhan.com/api/hotlist/chongBluo"
         self.kfc_url = "https://api.pearktrue.cn/api/kfc"
         self.wyy_url = "https://zj.v.api.aa1.cn/api/wenan-wy/?type=json"
+        self.zao_bao_url = "https://api.03c3.cn/api/zb?type=jsonImg"
 
         # 初始化配置
         self.config = super().load_config()
@@ -41,6 +46,8 @@ class sakuraTools(Plugin):
         if not self.config:
             self.config = self._load_config_template()
         
+        # 加载图片临时目录
+        self.image_tmp_path = self.config.get("image_tmp_path")
         # 加载舔狗日记关键字
         self.dog_keyword = self.config.get("dog_diary_keyword", [])
         # 加载笑话关键字
@@ -59,10 +66,75 @@ class sakuraTools(Plugin):
         self.kfc_keyword = self.config.get("kfc_keyword", [])
         # 加载网抑云关键字
         self.wyy_keyword = self.config.get("wyy_keyword", [])
+        # 加载早报关键字
+        self.zao_bao_keyword = self.config.get("zao_bao_keyword", [])
 
         # 注册处理上下文的事件  
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context  
         logger.info("[sakuraTools] 插件初始化完毕")  
+
+    # 下载图片
+    def download_image(self, image_url: str, name: str) -> io.BytesIO:  
+        try:
+            # 确定保存路径  
+            save_dir = self.image_tmp_path
+            # 创建目录（如果不存在的话）
+            os.makedirs(save_dir, exist_ok=True)
+            # 获取当前日期  
+            current_date = datetime.now()  
+            date_str = current_date.strftime("%Y-%m-%d")  
+            # 构建文件名  
+            filename = f"{name}_{date_str}.png"  
+            file_path = os.path.join(save_dir, filename)  
+            # 下载图片  
+            response = requests.get(image_url)  
+            response.raise_for_status()  # 检查请求是否成功  
+
+            # 保存图片  
+            with open(file_path, 'wb') as f:  
+                # 写入文件
+                f.write(response.content)
+            logger.info(f"成功下载图片: {file_path}")
+            # 关闭文件
+            f.close() 
+
+            # 创建 io.BytesIO 对象并返回  
+            img_io = io.BytesIO(response.content)  
+            img_io.seek(0)  # 将指针移动到开头  
+            
+            return img_io
+        except requests.exceptions.HTTPError as http_err:
+            err_str = f"HTTP错误: {http_err}"
+            logger.error(err_str)
+            return err_str
+        except Exception as err:
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)
+            return err_str 
+    
+    # 读取图片
+    def get_image_by_name(self, name: str) -> io.BytesIO:  
+        try:
+            # 获取当前时间并格式化为字符串   
+            datetime_str = datetime.now().strftime("%Y-%m-%d")  # 根据需要调整格式  
+            # 构建文件名  
+            filename = f"{name}_{datetime_str}.png"  
+            file_path = os.path.join(self.image_tmp_path, filename)  
+            logger.debug(f"查找路径：{file_path}")
+            # 检查文件是否存在  
+            if os.path.exists(file_path):  
+                # 如果文件存在，读取并返回 io 对象  
+                image = Image.open(file_path)  
+                img_io = io.BytesIO()  
+                image.save(img_io, format='PNG')  
+                img_io.seek(0)  # 将指针移动到开头  
+                return img_io  
+            else:  
+                # 文件不存在，返回 None  
+                return None  
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None 
 
     # http通用请求接口
     def http_request_data(self, url, params_json=None, verify_flag=None):
@@ -150,13 +222,13 @@ class sakuraTools(Plugin):
             if response_data["success"]:  
                 # 获取舔狗日记内容
                 dog_str = response_data['data']['content']
-                logger.info(f"get dog diary:{dog_str}")
+                logger.debug(f"get dog diary:{dog_str}")
                 return dog_str
             else:  
                 err_str = f"错误信息: {response_data['message']}"
                 logger.error(err_str)  
                 return err_str  
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str
@@ -174,13 +246,13 @@ class sakuraTools(Plugin):
             if response_data["success"]:  
                 # 获取笑话内容
                 joke_str = f"""[{response_data['data']['title']}]\n{response_data['data']['content']}\n(希望这则笑话能带给你快乐~🐾)"""
-                logger.info(f"get joke text:{joke_str}")
+                logger.debug(f"get joke text:{joke_str}")
                 return joke_str
             else:  
                 err_str = f"错误信息: {response_data['message']}"
                 logger.error(err_str)  
                 return err_str  
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str
@@ -191,20 +263,29 @@ class sakuraTools(Plugin):
 
     def moyu_request(self, url):
         try:  
-            # http请求
-            response_data = self.http_request_data(url)
+            # 从本地获取摸鱼日历
+            moyu_image_io = self.get_image_by_name("mo_yu")
+            if moyu_image_io:
+                # 本地存在就直接返回
+                logger.debug("[sakuraTools] 本地存在摸鱼日历，直接返回。")
+                return moyu_image_io
+            else:
+                #本地不存在，从网络获取
+                logger.info("[sakuraTools] 本地不存在摸鱼日历，从网络获取")
+                # http请求
+                response_data = self.http_request_data(url)
 
-            # 返回响应的数据内容  
-            if response_data["success"]:  
-                # 获取摸鱼内容
-                moyu_image_url = response_data['url']
-                logger.info(f"get moyu image url:{moyu_image_url}")
-                return moyu_image_url
-            else:  
-                err_str = f"错误信息: {response_data['message']}"
-                logger.error(err_str)  
-                return err_str  
-        except Exception as e:
+                # 返回响应的数据内容  
+                if response_data["success"]:  
+                    # 获取摸鱼日历
+                    mo_yu_url = response_data['url']
+                    logger.debug(f"get mo_yu image url:{mo_yu_url}")
+                    return self.download_image(mo_yu_url, "mo_yu")
+                else:  
+                    err_str = f"错误信息: {response_data['message']}"
+                    logger.error(err_str)  
+                    return err_str  
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str
@@ -222,13 +303,13 @@ class sakuraTools(Plugin):
             if response_data["success"]:  
                 # 获取acg内容
                 acg_image_url = response_data['url']
-                logger.info(f"get acg image url:{acg_image_url}")
+                logger.debug(f"get acg image url:{acg_image_url}")
                 return acg_image_url
             else:  
                 err_str = f"错误信息: {response_data['message']}"
                 logger.error(err_str)  
                 return err_str  
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str 
@@ -244,9 +325,9 @@ class sakuraTools(Plugin):
 
             # 返回响应的数据内容  
             young_girl_video_url = self.get_first_video_url(response_data)
-            logger.info(f"get young_girl video url:{young_girl_video_url}")
+            logger.debug(f"get young_girl video url:{young_girl_video_url}")
             return young_girl_video_url
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str
@@ -262,9 +343,9 @@ class sakuraTools(Plugin):
 
             # 返回响应的数据内容  
             beautiful_video_url = response_data['mp4_video']
-            logger.info(f"get beautiful video url:{beautiful_video_url}")
+            logger.debug(f"get beautiful video url:{beautiful_video_url}")
             return beautiful_video_url
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str 
@@ -305,7 +386,7 @@ class sakuraTools(Plugin):
                     f"星座：{data['luckyconstellation']}\n"
                     f"🔔【简评】：{data['shortcomment']}"
                 )
-                logger.info(f"get XingZuo text:{xingzuo_text}")
+                logger.debug(f"get XingZuo text:{xingzuo_text}")
                 return xingzuo_text
             else:  
                 err_str = f"错误信息: {response_data['message']}"
@@ -328,13 +409,13 @@ class sakuraTools(Plugin):
             if response_data["success"]:  
                 # 获取虫部落热门
                 chongbuluo_text = self.chongbuluo_five_posts(response_data)
-                logger.info(f"get chongbuluo text:{chongbuluo_text}")
+                logger.debug(f"get chongbuluo text:{chongbuluo_text}")
                 return chongbuluo_text
             else:  
                 err_str = f"错误信息: {response_data['message']}"
                 logger.error(err_str)  
                 return err_str  
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str
@@ -352,9 +433,9 @@ class sakuraTools(Plugin):
             if "text" in response_data:
                 # 获取疯狂星期四文案
                 kfc_text = response_data['text']
-            logger.info(f"get kfc text:{kfc_text}")
+            logger.debug(f"get kfc text:{kfc_text}")
             return kfc_text
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str 
@@ -372,23 +453,51 @@ class sakuraTools(Plugin):
             if "msg" in response_data:
                 # 获取网易云热评
                 wyy_text = response_data['msg']
-            logger.info(f"get wyy text:{wyy_text}")
+            logger.debug(f"get wyy text:{wyy_text}")
             return wyy_text
-        except Exception as e:
+        except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str
+    def zao_bao_check_keyword(self, content):
+        # 检查关键词   
+        return any(keyword in content for keyword in self.zao_bao_keyword)
+
+    def zao_bao_request(self, url):
+        try:  
+            # 从本地获取早报图片
+            feature_newspaper_io = self.get_image_by_name("zao_bao")
+            if feature_newspaper_io:
+                # 本地存在就直接返回
+                logger.info("[sakuraTools] 本地存在早报图片，直接返回")
+                return feature_newspaper_io
+            else:
+                #本地不存在，从网络获取
+                # http请求
+                logger.info("[sakuraTools] 本地不存在早报图片，从网络获取")
+                response_data = self.http_request_data(url)
+
+                # 获取早报内容
+                zao_bao_url = response_data['data']['imageurl']
+                logger.debug(f"get zao_bao image url:{zao_bao_url}")
+                return self.download_image(zao_bao_url, "zao_bao")
+        except Exception as err:
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)
+            return err_str 
     
     def on_handle_context(self, e_context: EventContext):  
         """处理上下文事件"""  
+        # 检查上下文类型是否为文本
         if e_context["context"].type not in [ContextType.TEXT]:  
             logger.debug("[sakuraTools] 上下文类型不是文本，无需处理")  
             return  
         
+        # 获取消息内容并去除首尾空格
         content = e_context["context"].content.strip()  
 
         if self.dog_check_keyword(content):  
-            logger.info("[sakuraTools] 舔狗日记")  
+            logger.debug("[sakuraTools] 舔狗日记")  
             reply = Reply()  
             # 获取舔狗日记
             dog_text = self.dog_request(self.dog_url)  
@@ -398,7 +507,7 @@ class sakuraTools(Plugin):
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
         elif self.joke_check_keyword(content):
-            logger.info("[sakuraTools] 笑话")  
+            logger.debug("[sakuraTools] 笑话")  
             reply = Reply()  
             # 获取笑话
             dog_text = self.joke_request(self.joke_url) 
@@ -408,28 +517,28 @@ class sakuraTools(Plugin):
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
         elif self.moyu_check_keyword(content):
-            logger.info("[sakuraTools] 摸鱼日历")  
+            logger.debug("[sakuraTools] 摸鱼日历")  
             reply = Reply()  
             # 获取摸鱼日历
-            moyu_url = self.moyu_request(self.moyu_url) 
-            reply.type = ReplyType.IMAGE_URL if moyu_url else ReplyType.TEXT  
-            reply.content = moyu_url if moyu_url else "获取摸鱼日历失败啦，待会再来吧~🐾"  
+            moyu_image_io = self.moyu_request(self.moyu_url) 
+            reply.type = ReplyType.IMAGE if moyu_image_io else ReplyType.TEXT  
+            reply.content = moyu_image_io if moyu_image_io else "获取摸鱼日历失败啦，待会再来吧~🐾"  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
         elif self.acg_check_keyword(content):
-            logger.info("[sakuraTools] 二次元")  
+            logger.debug("[sakuraTools] 二次元")  
             reply = Reply()  
-            # 获取摸鱼日历
-            moyu_url = self.acg_request(self.acg_url) 
-            reply.type = ReplyType.IMAGE_URL if moyu_url else ReplyType.TEXT  
-            reply.content = moyu_url if moyu_url else "获取二次元小姐姐失败啦，待会再来吧~🐾"  
+            # 获取二次元小姐姐
+            acg_url = self.acg_request(self.acg_url) 
+            reply.type = ReplyType.IMAGE_URL if acg_url else ReplyType.TEXT  
+            reply.content = acg_url if acg_url else "获取二次元小姐姐失败啦，待会再来吧~🐾"  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
 
         elif self.young_girl_check_keyword(content):
-            logger.info("[sakuraTools] 小姐姐")  
+            logger.debug("[sakuraTools] 小姐姐")  
             reply = Reply()  
             # 获取小姐姐视频
             young_girl_video_url = self.young_girl_request(self.young_girl_url) 
@@ -439,7 +548,7 @@ class sakuraTools(Plugin):
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
         elif self.beautiful_check_keyword(content):
-            logger.info("[sakuraTools] 小姐姐")  
+            logger.debug("[sakuraTools] 美女")  
             reply = Reply()  
             # 获取美女视频
             beautiful_video_url = self.beautiful_request(self.beautiful_url) 
@@ -449,7 +558,7 @@ class sakuraTools(Plugin):
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
         elif self.xingzuo_check_keyword(content):
-            logger.info(f"[sakuraTools] {content}")  
+            logger.debug(f"[sakuraTools] {content}")  
             reply = Reply()  
             reply.type = ReplyType.TEXT 
             # 获取今日星座运势 
@@ -462,7 +571,7 @@ class sakuraTools(Plugin):
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
         elif self.chongbuluo_check_keyword(content):
-            logger.info("[sakuraTools] 虫部落热门")  
+            logger.debug("[sakuraTools] 虫部落热门")  
             reply = Reply()  
             # 获取虫部落热门
             chongbuluo_text = self.chongbuluo_request(self.chongbuluo_url) 
@@ -472,7 +581,7 @@ class sakuraTools(Plugin):
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
         elif self.kfc_check_keyword(content):
-            logger.info("[sakuraTools] 疯狂星期四")  
+            logger.debug("[sakuraTools] 疯狂星期四")  
             reply = Reply()  
             # 获取疯狂星期四文案
             kfc_text = self.kfc_request(self.kfc_url) 
@@ -482,7 +591,7 @@ class sakuraTools(Plugin):
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
         elif self.wyy_check_keyword(content):
-            logger.info("[sakuraTools] 网抑云")  
+            logger.debug("[sakuraTools] 网抑云")  
             reply = Reply()  
             # 获取网抑云评论
             wyy_text = self.wyy_request(self.wyy_url) 
@@ -491,10 +600,20 @@ class sakuraTools(Plugin):
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
+        elif self.zao_bao_check_keyword(content):
+            logger.debug("[sakuraTools] 60s早报")  
+            reply = Reply()  
+            # 获取早报
+            zao_bao_image_io = self.zao_bao_request(self.zao_bao_url) 
+            reply.type = ReplyType.IMAGE if zao_bao_image_io else ReplyType.TEXT  
+            reply.content = zao_bao_image_io if zao_bao_image_io else "获取早报失败，待会再来吧~🐾"
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
 
     def get_help_text(self, **kwargs):  
         """获取帮助文本"""  
-        help_text = "[sakuraTools v1.0]\n输入'舔狗日记'将会得到一则舔狗日记~🐾\n输入'笑话'将会得到一则笑话~🐾\n输入'摸鱼日历'将会获得一份摸鱼日历~🐾\n输入'纸片人老婆'将会获得一张纸片人老婆美照~🐾\n输入'小姐姐'会收到一条小姐姐视频~🐾\n输入'美女'会收到一条美女视频~🐾\n输入'对应星座'会收到今日运势~🐾\n输入'虫部落'将会收到虫部落今日热门~🐾\n输入'kfc'将会收到一条随机疯四文案~🐾\n输入'网抑云'将会获得一条网易云评论~🐾"  
+        help_text = "[sakuraTools v1.0]\n输入'早报'获取今日早报~🐾\n输入'舔狗日记'将会得到一则舔狗日记~🐾\n输入'笑话'将会得到一则笑话~🐾\n输入'摸鱼日历'将会获得一份摸鱼日历~🐾\n输入'纸片人老婆'将会获得一张纸片人老婆美照~🐾\n输入'小姐姐'会收到一条小姐姐视频~🐾\n输入'美女'会收到一条美女视频~🐾\n输入'对应星座'会收到今日运势~🐾\n输入'虫部落'将会收到虫部落今日热门~🐾\n输入'kfc'将会收到一条随机疯四文案~🐾\n输入'网抑云'将会获得一条网易云评论~🐾"  
         return help_text
 
 
