@@ -1,5 +1,13 @@
 {
-    "dog_diary_keyword": [],
-    "joke_keyword": [],
-    "moyu_keyword": []
+    "image_tmp_path":"./plugins/sakuraTools/tmp",
+    "dog_diary_keyword": ["舔狗","舔狗日记","舔狗日常"],
+    "joke_keyword": ["笑话","讲个笑话","来个笑话","来点笑话"],
+    "moyu_keyword": ["摸鱼","摸鱼日历"],
+    "acg_keyword": ["二次元老婆","ACG美图","acg美图","纸片人老婆","动漫图"],
+    "young_girl_keyword": ["小姐姐", "老婆"],
+    "beautiful_keyword": ["美女"],
+    "chongbuluo_keyword": ["虫部落"],
+    "kfc_keyword":["肯德基","kfc","KFC","疯狂星期四"],
+    "wyy_keyword":["网抑云"],
+    "zao_bao_keyword": ["日报","早报","速读报","快报"]
 }
