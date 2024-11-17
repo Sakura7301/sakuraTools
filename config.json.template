@@ -9,5 +9,10 @@
     "chongbuluo_keyword": ["虫部落"],
     "kfc_keyword":["肯德基","kfc","KFC","疯狂星期四"],
     "wyy_keyword":["网抑云"],
-    "zao_bao_keyword": ["日报","早报","速读报","快报"]
+    "newspaper_keyword": ["日报","早报","速读报","快报"],
+    "tarot_cards_path": "plugins/sakuraTools/images/TarotCards",
+    "tarot_single_keyword":["抽牌", "抽一张牌"],
+    "tarot_three_keyword":["三牌阵","三张牌阵","过去-现在-未来阵"],
+    "tarot_cross_keyword":["凯尔特十字","凯尔特十字牌阵","十字牌阵","十字阵"],
+    "delete_files_time_interval":86400
 }
