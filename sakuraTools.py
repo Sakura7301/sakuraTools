@@ -56,6 +56,8 @@ class sakuraTools(Plugin):
         self.tarot_cards_path = self.config.get("tarot_cards_path")
         # 加载真武灵签目录
         self.zwlq_image_path = self.config.get("zwlq_image_path")
+        # 加载断易天机64卦卦图目录
+        self.dytj_image_path = self.config.get("dytj_image_path")
         # 加载舔狗日记关键字
         self.dog_keyword = self.config.get("dog_diary_keyword", [])
         # 加载笑话关键字
@@ -88,11 +90,81 @@ class sakuraTools(Plugin):
         self.zwlq_chou_qian_keyword = self.config.get("zwlq_chou_qian_keyword", [])
         # 加载真武灵签解签关键字
         self.zwlq_jie_qian_keyword = self.config.get("zwlq_jie_qian_keyword", [])
+        # 加载断易天机指定卦图关键字
+        self.dytj_gua_tu_keyword = self.config.get("dytj_gua_tu_keyword", [])
+        # 加载端易天机随机卦图关键字
+        self.dytj_daily_gua_tu_keyword = self.config.get("dytj_daily_gua_tu_keyword", [])
         # 加载文件清除时间间隔
         self.delete_files_time_interval = self.config.get("delete_files_time_interval")
         # 存储最后一次删除文件的时间戳  
         self.last_delete_files_time = None 
-
+        # 六十四卦映射
+        self.sixty_four_gua_mapping = {  
+            "乾": "乾为天",  
+            "坤": "坤为地",  
+            "震": "震为雷",  
+            "巽": "巽为风",  
+            "坎": "坎为水",  
+            "离": "离为火",  
+            "艮": "艮为山",  
+            "兑": "兑为泽",  
+            "天风": "天风姤",  
+            "天山": "天山遁",  
+            "天地": "天地否",  
+            "天雷": "天雷无妄",  
+            "天火": "天火同人",  
+            "天水": "天水讼",  
+            "天泽": "天泽履",  
+            "地风": "地风升",  
+            "地山": "地山谦",  
+            "地天": "地天泰",  
+            "地雷": "地雷复",  
+            "地火": "地火明夷",  
+            "地水": "地水师",  
+            "地泽": "地泽临",  
+            "雷风": "雷风恒",  
+            "雷山": "雷山小过",  
+            "雷天": "雷天大壮",  
+            "雷地": "雷地豫",  
+            "雷火": "雷火丰",  
+            "雷水": "雷水解",  
+            "雷泽": "雷泽归妹",  
+            "风山": "风山渐",  
+            "风天": "风天小畜",  
+            "风地": "风地观",  
+            "风雷": "风雷益",  
+            "风火": "风火家人",  
+            "风水": "风水涣",  
+            "风泽": "风泽中孚",  
+            "水风": "水风井",  
+            "水山": "水山蹇",  
+            "水天": "水天需",  
+            "水地": "水地比",  
+            "水雷": "水雷屯",  
+            "水火": "水火既济",  
+            "水泽": "水泽节",  
+            "火风": "火风鼎",  
+            "火山": "火山旅",  
+            "火天": "火天大有",  
+            "火地": "火地晋",  
+            "火雷": "火雷噬嗑",  
+            "火水": "火水未济",  
+            "火泽": "火泽睽",  
+            "山风": "山风蛊",  
+            "山天": "山天大畜",  
+            "山地": "山地剥",  
+            "山雷": "山雷颐",  
+            "山火": "山火贲",  
+            "山水": "山水蒙",  
+            "山泽": "山泽损",  
+            "泽风": "泽风大过",  
+            "泽山": "泽山咸",  
+            "泽天": "泽天夬",  
+            "泽地": "泽地萃",  
+            "泽雷": "泽雷随",  
+            "泽火": "泽火革",  
+            "泽水": "泽水困"  
+        }  
         # 注册处理上下文的事件  
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context  
         logger.info("[sakuraTools] 插件初始化完毕")  
@@ -625,13 +697,11 @@ class sakuraTools(Plugin):
             
             return img_io
         except requests.exceptions.HTTPError as http_err:
-            err_str = f"HTTP错误: {http_err}"
-            logger.error(err_str)
-            return err_str
+            logger.error(f"HTTP错误: {http_err}")
+            return None
         except Exception as err:
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)
-            return err_str 
+            logger.error(f"其他错误: {err}")  
+            return None 
     
     # 读取图片
     def get_image_by_name(self, name: str) -> io.BytesIO:  
@@ -811,7 +881,7 @@ class sakuraTools(Plugin):
 
     def moyu_request(self, url):
         """
-            摸鱼日记请求函数
+            摸鱼日历请求函数
         """
         try:  
             # 从本地获取摸鱼日历
@@ -1171,7 +1241,6 @@ class sakuraTools(Plugin):
             # 用当前时间戳作为种子  
             seed = int(time.time())  
             random.seed(seed)  
-
             # 生成一个范围在1到49的随机整数  
             random_number = random.randint(1, 49)  
             # 获取图片路径
@@ -1182,13 +1251,111 @@ class sakuraTools(Plugin):
                 # 返回图片的BytesIO对象
                 return open(image_path, 'rb')    
             else:
-                err_str = f"图片不存在：{image_path}"
-                logger.error(err_str)
-                return err_str
+                logger.error(f"图片不存在：{image_path}")
+                return None
         except Exception as err:  
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)  
-            return err_str 
+            logger.error(f"其他错误: {err}")  
+            return None 
+
+    def dytj_gua_tu_check_keyword(self, query):  
+        """
+            检查卦图关键词
+        """  
+        return any(keyword in query for keyword in self.dytj_gua_tu_keyword)  
+
+    def dytj_daily_gua_tu_check_keyword(self, query):  
+        """
+            检查每日一卦关键字
+        """ 
+        return any(keyword in query for keyword in self.dytj_daily_gua_tu_keyword)  
+
+    def dytj_gua_tu_request(self, input_text):  
+        """
+            根据输入文本读取对应的卦图
+        """  
+        try:  
+            # 去除输入文本中的空格和全角空格
+            input_text = input_text.replace('　', ' ').strip()  
+            # 卦图目录路径 
+            gua_dir = self.dytj_image_path   
+            # 检查当前工作目录
+            current_directory = os.getcwd()  
+            logger.debug(f"current_directory: {current_directory}")
+            logger.debug(f"[DuanYiTianJi] 查找卦图目录: {gua_dir}")  
+            # 列出卦图目录中的所有文件
+            files = os.listdir(gua_dir)
+            # 去掉"卦图"关键词 
+            input_text = input_text.replace('卦图', '').strip()   
+            target_file = None  
+            gua_name = None  
+
+            # 通过卦名匹配卦图
+            search_text = input_text.replace(' ', '')  
+            # 获取卦名  
+            if len(search_text) >= 1 and search_text[0] in self.sixty_four_gua_mapping:  
+                gua_name = self.sixty_four_gua_mapping[search_text[0]]  
+            elif len(search_text) >= 2 and search_text[:2] in self.sixty_four_gua_mapping:  
+                gua_name = self.sixty_four_gua_mapping[search_text[:2]]  
+            
+            # 根据卦名匹配卦图文件名
+            if gua_name:  
+                for file in files:  
+                    # 检查文件名是否包含目标卦名
+                    file_gua_name = file.split('_')[1].replace('.jpg', '')  
+                    if file_gua_name == gua_name:  
+                        target_file = file  
+                        break  
+            # 检查是否找到了匹配的卦图
+            if target_file is None:  
+                logger.warning(f"找不到与 '{input_text}' 匹配的卦图")  
+                raise None 
+            # 构建完整的文件路径
+            image_path = os.path.join(gua_dir, target_file)  
+            logger.info(f"image_path:{image_path}")
+            return open(image_path, "rb")
+                
+        except Exception as e:  
+            logger.error(f"获取卦图时出现错误：{str(e)}")  
+            return None  
+
+    def dytj_daily_gua_tu_request(self):  
+        """
+            根据生成的随机数字（1-64）读取对应的卦图
+        """  
+        try:  
+            # 用当前时间戳作为种子  
+            seed = int(time.time())  
+            random.seed(seed)
+            # 生成一个范围在1到64的随机整数  
+            random_number = random.randint(1, 64) 
+            # 获取目录
+            gua_dir = self.dytj_image_path
+            # 检查当前工作目录
+            current_directory = os.getcwd()  
+            logger.debug(f"current_directory: {current_directory}")
+            logger.debug(f"[DuanYiTianJi] 查找卦图目录: {gua_dir}")   
+            # 列出目录中的所有文件
+            files = os.listdir(gua_dir)  
+            # 构建文件名的前缀
+            prefix = f"{random_number:02d}_"  
+            target_file = None  
+            # 遍历文件列表，查找匹配的文件名
+            for file in files:  
+                if file.startswith(prefix):  
+                    target_file = file  
+                    break  
+            # 检查是否找到了匹配的卦图
+            if target_file is None:  
+                logger.warning(f"找不到序号为 {random_number} 的卦图")  
+                raise None  
+            # 构建完整的文件路径
+            image_path = os.path.join(gua_dir, target_file)  
+            return open(image_path, "rb")
+                
+        except Exception as e:  
+            logger.error(f"获取随机卦图时出现错误：{str(e)}")  
+            return None  
+
     
     def on_handle_context(self, e_context: EventContext):  
         """处理上下文事件"""  
@@ -1352,6 +1519,26 @@ class sakuraTools(Plugin):
             # 暂未实现解签功能
             reply.type = ReplyType.TEXT  
             reply.content = "签文都给你啦😾！你自己看看嘛~🐾"  
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
+        elif self.dytj_gua_tu_check_keyword(content):
+            logger.debug("[sakuraTools] 指定卦图")  
+            reply = Reply()  
+            # 获取指定卦图
+            dytj_image_io = self.dytj_gua_tu_request(content) 
+            reply.type = ReplyType.IMAGE if dytj_image_io else ReplyType.TEXT  
+            reply.content = dytj_image_io if dytj_image_io else "获取卦图失败啦，待会再来吧~🐾"  
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
+        elif self.dytj_daily_gua_tu_check_keyword(content):
+            logger.debug("[sakuraTools] 随机卦图")  
+            reply = Reply()  
+            # 获取随机卦图
+            dytj_image_io = self.dytj_daily_gua_tu_request() 
+            reply.type = ReplyType.IMAGE if dytj_image_io else ReplyType.TEXT  
+            reply.content = dytj_image_io if dytj_image_io else "获取卦图失败啦，待会再来吧~🐾"  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 

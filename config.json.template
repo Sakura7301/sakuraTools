@@ -18,5 +18,8 @@
     "zwlq_image_path": "plugins/sakuraTools/images/ZWLQ",
     "zwlq_chou_qian_keyword": ["抽签","抽签查询","抽签结果", "每日一签"],
     "zwlq_jie_qian_keyword":["解签","解签查询","解签结果"],
+    "dytj_image_path": "plugins/sakuraTools/images/DYTJ",
+    "dytj_gua_tu_keyword":["卦图"],
+    "dytj_daily_gua_tu_keyword":["每日一卦"],
     "delete_files_time_interval":86400
 }
