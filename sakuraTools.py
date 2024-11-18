@@ -54,6 +54,8 @@ class sakuraTools(Plugin):
         self.image_tmp_path = self.config.get("image_tmp_path")
         # 加载塔罗牌目录
         self.tarot_cards_path = self.config.get("tarot_cards_path")
+        # 加载真武灵签目录
+        self.zwlq_image_path = self.config.get("zwlq_image_path")
         # 加载舔狗日记关键字
         self.dog_keyword = self.config.get("dog_diary_keyword", [])
         # 加载笑话关键字
@@ -82,6 +84,10 @@ class sakuraTools(Plugin):
         self.tarot_cross_keyword = self.config.get("tarot_cross_keyword", [])
         # 加载黄历关键字
         self.huang_li_keyword = self.config.get("huang_li_keyword", [])
+        # 加载真武灵签抽签关键字
+        self.zwlq_chou_qian_keyword = self.config.get("zwlq_chou_qian_keyword", [])
+        # 加载真武灵签解签关键字
+        self.zwlq_jie_qian_keyword = self.config.get("zwlq_jie_qian_keyword", [])
         # 加载文件清除时间间隔
         self.delete_files_time_interval = self.config.get("delete_files_time_interval")
         # 存储最后一次删除文件的时间戳  
@@ -403,42 +409,43 @@ class sakuraTools(Plugin):
 
             logger.debug(f"合成的五张牌图片已保存: {output_path}")  
         return open(output_path, 'rb')  
+    
+    def get_local_image(self, number):  
+        """
+            在指定目录下查找指定数字前缀的图片
+        """  
+        try:
+            if not isinstance(number, int) or number < 1 or number > 49:  
+                logger.error(f"数字必须在1-49之间，当前数字：{number}")  
+                return None  
 
-    def tarot_check_keyword(self, content):
-        """
-            检查塔罗牌关键字
-        """
-        # 检查关键词   
-        if self.tarot_single_card_check_keyword(content):
-            return 1
-        elif self.tarot_three_cards_check_keyword(content):
-            return 3
-        elif self.tarot_cross_cards_check_keyword(content):
-            return 5
-        else:
-            return 0
-
-    def tarot_request(self, num=int):
-        """
-            塔罗牌请求函数
-        """
-        try:  
-            # 检查抽牌分类
-            if num == 1:
-                # 请求单张牌
-                return self.tarot_get_single_card()
-            elif num == 3:
-                # 请求三牌阵
-                return self.tarot_get_three_cards()
-            elif num == 5:
-                # 请求十字牌阵
-                return self.tarot_get_cross_cards()
-            else:
-                return None
+            # 获取目标目录的完整路径  
+            target_dir = self.zwlq_image_path     
+            
+            # 确保目录存在  
+            if not os.path.exists(target_dir):  
+                logger.error(f"目录不存在：{target_dir}")  
+                return None  
+            
+            # 生成匹配的文件名模式  
+            patterns = [  
+                f"{number:02d}_",     
+                f"{number}_"          
+            ]  
+            
+            for filename in os.listdir(target_dir):  
+                if filename.endswith('.png'):  
+                    for pattern in patterns:  
+                        if filename.startswith(pattern):  
+                            full_path = os.path.join(target_dir, filename)  
+                            logger.debug(f"找到匹配图片：{filename}")  
+                            return full_path  
+                            
+            logger.error(f"未找到数字{number}对应的签文图片")  
+            return None
         except Exception as err:
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)
-            return err_str
+            logger.error(f"其他错误: {err}")  
+            return None 
 
     def check_and_delete_files(self):  
         """
@@ -826,13 +833,11 @@ class sakuraTools(Plugin):
                     logger.debug(f"get mo_yu image url:{mo_yu_url}")
                     return self.download_image(mo_yu_url, "mo_yu")
                 else:  
-                    err_str = f"错误信息: {response_data['message']}"
-                    logger.error(err_str)  
+                    logger.error(f"错误信息: {response_data['message']}")  
                     return err_str  
         except Exception as err:
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)
-            return err_str
+            logger.error(f"其他错误: {err}")
+            return None
 
     def acg_check_keyword(self, content):
         """
@@ -856,13 +861,11 @@ class sakuraTools(Plugin):
                 logger.debug(f"get acg image url:{acg_image_url}")
                 return acg_image_url
             else:  
-                err_str = f"错误信息: {response_data['message']}"
-                logger.error(err_str)  
-                return err_str  
+                logger.error(f"错误信息: {response_data['message']}")  
+                return None  
         except Exception as err:
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)
-            return err_str 
+            logger.error(f"其他错误: {err}")
+            return None
 
     def young_girl_check_keyword(self, content):
         """
@@ -884,9 +887,8 @@ class sakuraTools(Plugin):
             logger.debug(f"get young_girl video url:{young_girl_video_url}")
             return young_girl_video_url
         except Exception as err:
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)
-            return err_str
+            logger.error(f"其他错误: {err}")
+            return None
 
     def beautiful_check_keyword(self, content):
         """
@@ -908,9 +910,8 @@ class sakuraTools(Plugin):
             logger.debug(f"get beautiful video url:{beautiful_video_url}")
             return beautiful_video_url
         except Exception as err:
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)
-            return err_str 
+            logger.error(f"其他错误: {err}")
+            return None
 
     def constellation_check_keyword(self, content):
         """
@@ -1074,9 +1075,44 @@ class sakuraTools(Plugin):
                 logger.debug(f"get zao_bao image url:{newspaper_image_url}")
                 return self.download_image(newspaper_image_url, "zao_bao")
         except Exception as err:
-            err_str = f"其他错误: {err}"
-            logger.error(err_str)
-            return err_str 
+            logger.error(f"其他错误: {err}")
+            return None
+
+    def tarot_check_keyword(self, content):
+        """
+            检查塔罗牌关键字
+        """
+        # 检查关键词   
+        if self.tarot_single_card_check_keyword(content):
+            return 1
+        elif self.tarot_three_cards_check_keyword(content):
+            return 3
+        elif self.tarot_cross_cards_check_keyword(content):
+            return 5
+        else:
+            return 0
+
+    def tarot_request(self, num=int):
+        """
+            塔罗牌请求函数
+        """
+        try:  
+            # 检查抽牌分类
+            if num == 1:
+                # 请求单张牌
+                return self.tarot_get_single_card()
+            elif num == 3:
+                # 请求三牌阵
+                return self.tarot_get_three_cards()
+            elif num == 5:
+                # 请求十字牌阵
+                return self.tarot_get_cross_cards()
+            else:
+                return None
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
+
     def huang_li_check_keyword(self, content):
         """
             检查黄历关键字
@@ -1118,6 +1154,41 @@ class sakuraTools(Plugin):
             err_str = f"其他错误: {err}"
             logger.error(err_str)  
             return err_str  
+
+    def zwlq_chou_qian_check_keyword(self, query): 
+        # 定义抽签关键词列表
+        return any(keyword in query for keyword in self.zwlq_chou_qian_keyword)
+
+    def zwlq_jie_qian_check_keyword(self, query):
+        # 定义解签关键词列表
+        return any(keyword in query for keyword in self.zwlq_jie_qian_keyword)
+    
+    def zwlq_chou_qian_request(self):  
+        """  
+        读取本地图片并返回BytesIO对象  
+        """  
+        try:
+            # 用当前时间戳作为种子  
+            seed = int(time.time())  
+            random.seed(seed)  
+
+            # 生成一个范围在1到49的随机整数  
+            random_number = random.randint(1, 49)  
+            # 获取图片路径
+            image_path = self.get_local_image(random_number)  
+            
+            # 检查图片是否存在
+            if image_path and os.path.exists(image_path):  
+                # 返回图片的BytesIO对象
+                return open(image_path, 'rb')    
+            else:
+                err_str = f"图片不存在：{image_path}"
+                logger.error(err_str)
+                return err_str
+        except Exception as err:  
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)  
+            return err_str 
     
     def on_handle_context(self, e_context: EventContext):  
         """处理上下文事件"""  
@@ -1166,13 +1237,12 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 二次元")  
             reply = Reply()  
             # 获取二次元小姐姐
-            ACG_URL = self.acg_request(self.ACG_URL) 
-            reply.type = ReplyType.IMAGE_URL if ACG_URL else ReplyType.TEXT  
-            reply.content = ACG_URL if ACG_URL else "获取二次元小姐姐失败啦，待会再来吧~🐾"  
+            acg_image_url = self.acg_request(self.ACG_URL) 
+            reply.type = ReplyType.IMAGE_URL if acg_image_url else ReplyType.TEXT  
+            reply.content = acg_image_url if acg_image_url else "获取二次元小姐姐失败啦，待会再来吧~🐾"  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
-
         elif self.young_girl_check_keyword(content):
             logger.debug("[sakuraTools] 小姐姐")  
             reply = Reply()  
@@ -1263,6 +1333,25 @@ class sakuraTools(Plugin):
             huang_li_text = self.huang_li_request(self.HUANG_LI_URL) 
             reply.type = ReplyType.TEXT  
             reply.content = huang_li_text 
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
+        elif self.zwlq_chou_qian_check_keyword(content):
+            logger.debug("[sakuraTools] 抽签")  
+            reply = Reply()  
+            # 获取真武灵签
+            zwlq_image_io = self.zwlq_chou_qian_request() 
+            reply.type = ReplyType.IMAGE if zwlq_image_io else ReplyType.TEXT  
+            reply.content = zwlq_image_io if zwlq_image_io else "抽签失败啦，待会再来吧~🐾"  
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
+        elif self.zwlq_jie_qian_check_keyword(content):
+            logger.debug("[sakuraTools] 解签")  
+            reply = Reply()  
+            # 暂未实现解签功能
+            reply.type = ReplyType.TEXT  
+            reply.content = "签文都给你啦😾！你自己看看嘛~🐾"  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
