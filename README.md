@@ -30,6 +30,11 @@
 - **抽牌**: 抽取单张塔罗牌。
 - **三牌阵**: 抽取塔罗牌三牌阵。
 - **十字牌阵**: 抽取塔罗牌十字牌阵。
+- **黄历**: 获取黄历。
+- **抽签**: 抽取真武灵签。
+- **卦图+卦名**: 获取指定卦图。
+- **每日一卦**: 随机获取一张卦图。
+
 
 ## 配置
 该插件支持关键字配置，例如舔狗日记、笑话、摸鱼等关键字，这些可以在配置文件中自定义，星座无需定义。
@@ -52,6 +57,13 @@
     "tarot_single_keyword":["抽牌", "抽一张牌"],
     "tarot_three_keyword":["三牌阵","三张牌阵","过去-现在-未来阵"],
     "tarot_cross_keyword":["凯尔特十字","凯尔特十字牌阵","十字牌阵","十字阵"],
+    "huang_li_keyword":["黄历","老黄历","今日黄历","黄历查询"],
+    "zwlq_image_path": "plugins/sakuraTools/images/ZWLQ",
+    "zwlq_chou_qian_keyword": ["抽签","抽签查询","抽签结果", "每日一签"],
+    "zwlq_jie_qian_keyword":["解签","解签查询","解签结果"],
+    "dytj_image_path": "plugins/sakuraTools/images/DYTJ",
+    "dytj_gua_tu_keyword":["卦图"],
+    "dytj_daily_gua_tu_keyword":["每日一卦"],
     "delete_files_time_interval":86400
 }
 ```
