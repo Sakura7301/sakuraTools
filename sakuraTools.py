@@ -2,6 +2,7 @@ import os
 import re
 import io  
 import time
+import json
 import random 
 import plugins  
 import requests  
@@ -41,6 +42,7 @@ class sakuraTools(Plugin):
         self.KFC_URL = "https://api.pearktrue.cn/api/kfc"
         self.WYY_URL = "https://zj.v.api.aa1.cn/api/wenan-wy/?type=json"
         self.NEWSPAPER_URL = "https://api.03c3.cn/api/zb?type=jsonImg"
+        self.HUANG_LI_URL = "https://www.36jxs.com/api/Commonweal/almanac"
 
         # 初始化配置
         self.config = super().load_config()
@@ -78,6 +80,8 @@ class sakuraTools(Plugin):
         self.tarot_three_keyword = self.config.get("tarot_three_keyword", [])
         # 加载塔罗牌十字牌阵关键字
         self.tarot_cross_keyword = self.config.get("tarot_cross_keyword", [])
+        # 加载黄历关键字
+        self.huang_li_keyword = self.config.get("huang_li_keyword", [])
         # 加载文件清除时间间隔
         self.delete_files_time_interval = self.config.get("delete_files_time_interval")
         # 存储最后一次删除文件的时间戳  
@@ -482,13 +486,98 @@ class sakuraTools(Plugin):
                         logger.error(f"发生错误: {e}")  
         except Exception as e:  
             logger.error(f"发生错误: {e}")  
+    
+    def parse_huang_li_data(self, data):  
+        try:              
+            result = []  
+
+            # 干支纪年
+            if 'TianGanDiZhiYear' in data and data['TianGanDiZhiYear'] and 'TianGanDiZhiMonth' in data and data['TianGanDiZhiMonth'] and 'TianGanDiZhiDay' in data and data['TianGanDiZhiDay']:
+                result.append(f"{data['TianGanDiZhiYear']}年 {data['TianGanDiZhiMonth']}月 {data['TianGanDiZhiDay']}日")
+
+            # 农历日期  
+            if 'LYear' in data and data['LYear'] and 'LMonth' in data and data['LMonth'] and 'LDay' in data and data['LDay'] and 'LMonthName' in data and data['LMonthName']:
+                result.append(f"{data['LYear']}年 {data['LMonth']}{data['LDay']}  {data['LMonthName']}")
+
+            # 公历日期  
+            if 'GregorianDateTime' in data and data['GregorianDateTime']:  
+                result.append(f"公历: {data['GregorianDateTime']}")  
+
+            # 节气  
+            if 'SolarTermName' in data and data['SolarTermName']:  
+                result.append(f"节气: {data['SolarTermName']}")   
+
+            # 宜  
+            if 'Yi' in data and data['Yi']:  
+                result.append(f"宜: {data['Yi']}")  
+
+            # 忌  
+            if 'Ji' in data and data['Ji']:  
+                result.append(f"忌: {data['Ji']}")  
+
+            # 神位  
+            shenwei = data.get('ShenWei', '')  
+            if shenwei:  
+                # 在"阳贵"前加一个空格  
+                shenwei = shenwei.replace("阳贵", " 阳贵") 
+                shenwei_list = shenwei.split()  
+                shenwei_result = ["[神位]:"]  
+                for item in shenwei_list:  
+                    shenwei_result.append(f"    {item}")  
+                result.append('\n'.join(shenwei_result))  
+
+            # 胎神  
+            if 'Taishen' in data and data['Taishen']:  
+                result.append(f"胎神: {data['Taishen']}")  
+
+            # 冲日  
+            if 'Chong' in data and data['Chong']:  
+                result.append(f"冲日: {data['Chong']}")  
+
+            # 岁煞  
+            if 'SuiSha' in data and data['SuiSha']:  
+                result.append(f"岁煞: {data['SuiSha']}")  
+
+            # 公历节日  
+            if 'GJie' in data and data['GJie']:  
+                result.append(f"公历节日: {data['GJie']}")  
+
+            # 农历节日  
+            if 'LJie' in data and data['LJie']:  
+                result.append(f"农历节日: {data['LJie']}") 
+
+            # 星宿  
+            if 'XingEast' in data and data['XingEast']:  
+                result.append(f"星宿: {data['XingEast']}")  
+
+            # 星座  
+            if 'XingWest' in data and data['XingWest']:  
+                result.append(f"星座: {data['XingWest']}")  
+
+            # 彭祖百忌  
+            if 'PengZu' in data and data['PengZu']:  
+                result.append(f"彭祖百忌: {data['PengZu']}")  
+
+            # 五行纳音  
+            if 'WuxingNaYear' in data and data['WuxingNaYear'] and 'WuxingNaMonth' in data and data['WuxingNaMonth'] and 'WuxingNaDay' in data and data['WuxingNaDay']:  
+                result.append(f"五行纳音: {data['WuxingNaYear']} {data['WuxingNaMonth']} {data['WuxingNaDay']}")  
+                
+            # 组合结果为多行字符串  
+            return '\n'.join(result)  
+
+        except json.JSONDecodeError:  
+            return "无效的 JSON 数据"  
+        except Exception as e:  
+            return f"发生错误: {str(e)}"  
+
     def ensure_directory_exists(self, directory):  
         """
             检查指定目录是否存在，如果不存在则创建该目录
         """  
         try:  
             if not os.path.exists(directory):  
-                os.makedirs(directory, exist_ok=True)  # 创建目录  
+                # 创建目录 
+                os.makedirs(directory, exist_ok=True)   
                 logger.info(f"目录已创建: {directory}")  
             else:  
                 logger.debug(f"目录已存在: {directory}")  
@@ -565,16 +654,16 @@ class sakuraTools(Plugin):
             return None 
 
     # http通用请求接口
-    def http_request_data(self, url, params_json=None, verify_flag=None):
+    def http_request_data(self, url, user_headers=None, user_params=None, verify_flag=None):
         """
             通用的HTTP请求函数
         """
         try:  
             # 发起GET请求  
             if verify_flag:
-                response = requests.get(url, params=params_json, verify=False)
+                response = requests.get(url, headers=user_headers, params=user_params, verify=False)
             else:
-                response = requests.get(url, params=params_json)
+                response = requests.get(url, headers=user_headers, params=user_params)
 
             # 打印请求信息  
             logger.debug("发送的HTTP请求:")  
@@ -865,7 +954,7 @@ class sakuraTools(Plugin):
                     f"星座：{data['luckyconstellation']}\n"
                     f"🔔【简评】：{data['shortcomment']}"
                 )
-                logger.debug(f"get XingZuo text:{constellation_text}")
+                logger.debug(f"get Constellation text:{constellation_text}")
                 return constellation_text
             else:  
                 err_str = f"错误信息: {response_data['message']}"
@@ -988,6 +1077,47 @@ class sakuraTools(Plugin):
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str 
+    def huang_li_check_keyword(self, content):
+        """
+            检查黄历关键字
+        """
+        # 检查关键词   
+        return any(keyword in content for keyword in self.huang_li_keyword)
+
+    def huang_li_request(self, url):
+        """
+            黄历请求函数
+        """
+        try:  
+            # 获取当前日期
+            current_date = datetime.now().strftime("%Y-%m-%d")  
+
+            # 构造请求头
+            headers = {  
+                # 使用 Firefox 的 User-Agent  
+                'User-Agent': 'Mozilla/5.0 (Linux; Ubuntu; rv:94.0) Gecko/20100101 Firefox/94.0',
+                'Accept': '*/*',  
+                'Accept-Encoding': 'gzip, deflate, br',  
+                'Cache-Control': 'no-cache',  
+                'Connection': 'keep-alive',  
+                'Host': 'www.36jxs.com',  
+            } 
+
+            # 设置请求的参数  
+            params = {  
+                "sun": current_date,  
+            }  
+
+            # http请求
+            response_data = self.http_request_data(url, headers, params, None)
+
+            # 获取黄历  
+            huang_li_text = self.parse_huang_li_data(response_data['data'])
+            return huang_li_text
+        except Exception as err:  
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)  
+            return err_str  
     
     def on_handle_context(self, e_context: EventContext):  
         """处理上下文事件"""  
@@ -1118,11 +1248,21 @@ class sakuraTools(Plugin):
             e_context.action = EventAction.BREAK_PASS 
         elif (tarot_num := self.tarot_check_keyword(content)) > 0:
             logger.debug("[sakuraTools] 塔罗牌")  
-            reply = Reply()  
+            reply = Reply()
             # 获取塔罗牌图片
             tarot_image_io = self.tarot_request(tarot_num) 
             reply.type = ReplyType.IMAGE if tarot_image_io else ReplyType.TEXT  
             reply.content = tarot_image_io if tarot_image_io else "获取塔罗牌失败，待会再来吧~🐾"
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
+        elif self.huang_li_check_keyword(content):
+            logger.debug("[sakuraTools] 黄历")  
+            reply = Reply()  
+            # 获取黄历
+            huang_li_text = self.huang_li_request(self.HUANG_LI_URL) 
+            reply.type = ReplyType.TEXT  
+            reply.content = huang_li_text 
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
@@ -1132,7 +1272,7 @@ class sakuraTools(Plugin):
 
     def get_help_text(self, **kwargs):  
         """获取帮助文本"""  
-        help_text = "[sakuraTools v1.0]\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [美女]：获取一条美女视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n[抽牌]：抽取单张塔罗牌\n[三牌阵]：抽取塔罗牌三牌阵\n[十字牌阵]：抽取塔罗牌十字牌阵"  
+        help_text = "\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [美女]：获取一条美女视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n -[黄历]：获取今日黄历\n- [抽牌]：抽取单张塔罗牌\n- [三牌阵]：抽取塔罗牌三牌阵\n- [十字牌阵]：抽取塔罗牌十字牌阵"  
         return help_text
 
 

@@ -14,5 +14,6 @@
     "tarot_single_keyword":["抽牌", "抽一张牌"],
     "tarot_three_keyword":["三牌阵","三张牌阵","过去-现在-未来阵"],
     "tarot_cross_keyword":["凯尔特十字","凯尔特十字牌阵","十字牌阵","十字阵"],
+    "huang_li_keyword":["黄历","老黄历","今日黄历","黄历查询"],
     "delete_files_time_interval":86400
 }
