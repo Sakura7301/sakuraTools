@@ -156,15 +156,18 @@ class sakuraTools(Plugin):
         # 如果指定了牌位  
         if num is not None:  
             if 0 <= num < len(card_files):  
+                # 按指定位置抽牌
                 selected_card = card_files[num]  
                 card_name = self.get_card_name(selected_card)  
                 logger.debug(f"抽取的牌为: {card_name} (标志: {draw_flag})")  
             else:  
+                # 随机抽取牌位
                 logger.info("参数m超出范围，使用随机数抽取牌")  
                 selected_card = card_files[random.randint(0, len(card_files) - 1)]  
                 card_name = self.get_card_name(selected_card)  
                 logger.debug(f"抽取的牌为: {card_name} (标志: {draw_flag})")  
         else:  
+            # 随机抽取牌位
             selected_card = card_files[random.randint(0, len(card_files) - 1)]  
             card_name = self.get_card_name(selected_card)  
             logger.info(f"抽取的牌为: {card_name} (标志: {draw_flag})")  
@@ -190,12 +193,14 @@ class sakuraTools(Plugin):
             #存在就直接返回  
             logger.debug(f"找到已存在的图片：{output_path}")   
         else:  
+            # 生成合成图像逻辑
             card_path = os.path.join(self.tarot_cards_path, selected_card)  
+            # 打开图像
             card_image = Image.open(card_path).convert("RGBA")  
 
             if draw_flag == 0:  
-                # 逆位处理  
-                card_image = card_image.transpose(Image.FLIP_TOP_BOTTOM)  # 反转图像   
+                # 逆位处理(旋转图像)
+                card_image = card_image.rotate(180)   
 
             # 压缩图像  
             card_image = card_image.resize((card_image.width//3, card_image.height//3), Image.LANCZOS)  
@@ -215,16 +220,20 @@ class sakuraTools(Plugin):
         output_filename = "Three"  
 
         for i in range(3):  
-            draw_flag = self.generate_draw_flag()  # 生成抽牌标志  
+            # 生成抽牌标志 
+            draw_flag = self.generate_draw_flag()   
             #按顺序抽  
             selected_card = card_files[i]  
             card_name = self.get_card_name(selected_card)  
-            selected_cards.append((selected_card, card_name, draw_flag))  # 保存完整信息  
+            # 保存完整信息 
+            selected_cards.append((selected_card, card_name, draw_flag))   
             
-            if draw_flag == 0:  # 逆位处理  
+            if draw_flag == 0:  
+                # 逆位处理  
                 logger.debug(f"抽到：{card_name}(逆位)")  
                 output_filename += f"_{card_name}逆"  
             else:  
+                # 正位处理
                 logger.debug(f"抽到：{card_name}(正位)")  
                 output_filename += f"_{card_name}正"  
 
@@ -250,18 +259,24 @@ class sakuraTools(Plugin):
                 card_image = Image.open(card_path).convert("RGBA")  
                 
                 # 根据抽牌标志处理图像  
-                if draw_flag == 0:  # 逆位处理  
-                    card_image = card_image.transpose(Image.FLIP_TOP_BOTTOM)  # 反转图像  
+                if draw_flag == 0:  
+                    # 逆位处理(旋转图像)
+                    card_image = card_image.rotate(180)
                 
-                card_images.append(card_image)  # 添加处理后的图像  
-
-            total_width = sum(img.width for img in card_images) + 100  # 3张牌的宽度加上间隔  
-            total_height = max(img.height for img in card_images) + 20  # 适当增加高度  
-            background_color = (200, 220, 255)  # 背景颜色  
+                # 添加处理后的图像
+                card_images.append(card_image)    
+            # 3张牌的宽度加上间隔  
+            total_width = sum(img.width for img in card_images) + 100  
+            # 适当增加高度 
+            total_height = max(img.height for img in card_images) + 20   
+            # 背景颜色 
+            background_color = (200, 220, 255)   
+            # 创建新图像
             new_image = Image.new('RGBA', (total_width, total_height), background_color)  
-
-            draw = ImageDraw.Draw(new_image)  
-            border_color = (0, 0, 0)  # 边框颜色  
+            # 创建绘图对象
+            draw = ImageDraw.Draw(new_image) 
+            # 边框颜色 
+            border_color = (0, 0, 0)    
             border_thickness = 3  
 
             # 将三张牌放入新图片  
@@ -291,16 +306,21 @@ class sakuraTools(Plugin):
         output_filename = "Cross"  
 
         for i in range(5):  
-            draw_flag = self.generate_draw_flag()  # 生成抽牌标志  
+            # 生成抽牌标志  
+            draw_flag = self.generate_draw_flag()  
             #按顺序抽  
             selected_card = card_files[i]  
+            # 牌名
             card_name = self.get_card_name(selected_card)  
-            selected_cards.append((selected_card, card_name, draw_flag))  # 保存完整信息   
+            # 保存完整信息 
+            selected_cards.append((selected_card, card_name, draw_flag))    
             
-            if draw_flag == 0:  # 逆位处理  
+            if draw_flag == 0:  
+                # 逆位处理  
                 logger.debug(f"抽到：{card_name}(逆位)")  
                 output_filename += f"_{card_name}逆"  
             else:  
+                # 正位处理
                 logger.debug(f"抽到：{card_name}(正位)")  
                 output_filename += f"_{card_name}正"  
 
@@ -318,18 +338,22 @@ class sakuraTools(Plugin):
             #存在就直接返回  
             logger.debug(f"找到已存在的图片：{output_path}")   
         else:  
+            # 生成合成图像逻辑
             card_images = []  
-            
             for selected_card, card_name, draw_flag in selected_cards:  
-                card_path = os.path.join(self.tarot_cards_path, selected_card)  
+                # 牌路径
+                card_path = os.path.join(self.tarot_cards_path, selected_card) 
+                # 打开图像 
                 card_image = Image.open(card_path).convert("RGBA")  
-                
                 # 根据抽牌标志处理图像  
-                if draw_flag == 0:  # 逆位处理  
-                    card_image = card_image.transpose(Image.FLIP_TOP_BOTTOM)  # 反转图像  
+                if draw_flag == 0:  
+                    # 逆位处理(旋转图像)
+                    card_image = card_image.rotate(180)
                     
-                card_images.append(card_image)  # 添加处理后的图像  
+                # 添加处理后的图像
+                card_images.append(card_image)  
             
+            # 计算合成图像的尺寸
             card_width, card_height = card_images[0].size  
             total_width = card_width * 3 + 120  
             total_height = card_height * 3 + 120  
@@ -339,9 +363,11 @@ class sakuraTools(Plugin):
             new_image = Image.new('RGBA', (total_width, total_height), background_color)  
             draw = ImageDraw.Draw(new_image)  
             
+            # 边框颜色
             border_color = (0, 0, 0)  
             border_thickness = 3  
 
+            # 计算中心位置
             center_x = (total_width - card_width) // 2  
             center_y = (total_height - card_height) // 2  
 
