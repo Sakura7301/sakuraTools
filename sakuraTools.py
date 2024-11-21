@@ -43,6 +43,7 @@ class sakuraTools(Plugin):
         self.WYY_URL = "https://zj.v.api.aa1.cn/api/wenan-wy/?type=json"
         self.NEWSPAPER_URL = "https://api.03c3.cn/api/zb?type=jsonImg"
         self.HUANG_LI_URL = "https://www.36jxs.com/api/Commonweal/almanac"
+        self.HOT_SEARCH_URL = "https://api.pearktrue.cn/api/60s/image/hot"
 
         # 初始化配置
         self.config = super().load_config()
@@ -92,8 +93,11 @@ class sakuraTools(Plugin):
         self.zwlq_jie_qian_keyword = self.config.get("zwlq_jie_qian_keyword", [])
         # 加载断易天机指定卦图关键字
         self.dytj_gua_tu_keyword = self.config.get("dytj_gua_tu_keyword", [])
-        # 加载端易天机随机卦图关键字
+        # 加载热搜关键字
         self.dytj_daily_gua_tu_keyword = self.config.get("dytj_daily_gua_tu_keyword", [])
+        self.hot_search_keyword = self.config.get("hot_search_keyword", [])
+        self.hot_search_baidu_keyword = self.config.get("hot_search_baidu_keyword", [])
+        self.hot_search_weibo_keyword = self.config.get("hot_search_weibo_keyword", [])
         # 加载文件清除时间间隔
         self.delete_files_time_interval = self.config.get("delete_files_time_interval")
         # 存储最后一次删除文件的时间戳  
@@ -664,11 +668,21 @@ class sakuraTools(Plugin):
             logger.error(f"发生错误: {e}") 
 
     # 下载图片
-    def download_image(self, image_url: str, name: str) -> io.BytesIO:  
+    def download_image(self, image_url: str, name: str, image_raw=None) -> io.BytesIO:  
         """
             下载图片的通用函数
         """
         try:
+            if image_raw:
+                write_text = image_raw
+            else:
+                # 下载图片  
+                response = requests.get(image_url)  
+                # 检查请求是否成功
+                response.raise_for_status()   
+                # 待写入文件内容
+                write_text = response.content
+
             # 确定保存路径  
             save_dir = self.image_tmp_path
             # 创建目录（如果不存在的话）
@@ -679,20 +693,18 @@ class sakuraTools(Plugin):
             # 构建文件名  
             filename = f"{name}_{date_str}.png"  
             file_path = os.path.join(save_dir, filename)  
-            # 下载图片  
-            response = requests.get(image_url)  
-            response.raise_for_status()  # 检查请求是否成功  
 
             # 保存图片  
             with open(file_path, 'wb') as f:  
                 # 写入文件
-                f.write(response.content)
+                f.write(write_text)
+
             logger.info(f"成功下载图片: {file_path}")
             # 关闭文件
             f.close() 
 
             # 创建 io.BytesIO 对象并返回  
-            img_io = io.BytesIO(response.content)  
+            img_io = io.BytesIO(write_text)  
             img_io.seek(0)  # 将指针移动到开头  
             
             return img_io
@@ -731,7 +743,7 @@ class sakuraTools(Plugin):
             return None 
 
     # http通用请求接口
-    def http_request_data(self, url, user_headers=None, user_params=None, verify_flag=None):
+    def http_request_data(self, url, user_headers=None, user_params=None, verify_flag=None, json=True):
         """
             通用的HTTP请求函数
         """
@@ -759,9 +771,11 @@ class sakuraTools(Plugin):
             logger.debug(f"响应头: {response.headers}") 
 
             # 解析响应体  
-            response_data = response.json()  
-            # 打印响应体  
-            logger.debug(f"响应体: {response_data}")
+            if json:
+                response_data = response.json()  
+            else :
+                # 直接返回二进制流
+                response_data = response.content
 
             return response_data
         except requests.exceptions.HTTPError as http_err:  
@@ -1356,6 +1370,59 @@ class sakuraTools(Plugin):
             logger.error(f"获取随机卦图时出现错误：{str(e)}")  
             return None  
 
+    def hot_search_check_keyword(self, content):
+        """
+            检查热搜关键字
+        """
+        # 检查关键词   
+        return any(keyword in content for keyword in self.hot_search_keyword)
+
+    def hot_search_baidu_check_keyword(self, content):
+        """
+            检查百度热搜关键字
+        """
+        # 检查关键词   
+        return any(keyword in content for keyword in self.hot_search_baidu_keyword)
+
+    def hot_search_weibo_check_keyword(self, content):
+        """
+            检查微博热搜关键字
+        """
+        # 检查关键词   
+        return any(keyword in content for keyword in self.hot_search_weibo_keyword)
+
+    def hot_search_request(self, context):
+        """
+            热搜请求函数
+        """
+        try:  
+            hot_search_type = ""
+            url = self.HOT_SEARCH_URL
+            # 检查热搜类型
+            if self.hot_search_baidu_check_keyword(context):
+                hot_search_type = "baidu"
+            elif self.hot_search_weibo_check_keyword(context):
+                hot_search_type = "weibo"
+            else:
+                # 不支持的热搜类型
+                return None
+
+            # 设置请求的参数  
+            params = {  
+                "type": hot_search_type
+            }  
+
+            #本地不存在，从网络获取
+            # http请求
+            logger.info(f"[sakuraTools] 从网络获取 {hot_search_type} 热搜")
+            response_data = self.http_request_data(url, None, params, None, False)
+
+            # 获取早报内容
+            logger.debug(f"get {hot_search_type} image text")
+            return self.download_image(None, hot_search_type, response_data)
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
     
     def on_handle_context(self, e_context: EventContext):  
         """处理上下文事件"""  
@@ -1539,6 +1606,16 @@ class sakuraTools(Plugin):
             dytj_image_io = self.dytj_daily_gua_tu_request() 
             reply.type = ReplyType.IMAGE if dytj_image_io else ReplyType.TEXT  
             reply.content = dytj_image_io if dytj_image_io else "获取卦图失败啦，待会再来吧~🐾"  
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
+        elif self.hot_search_check_keyword(content):
+            logger.debug("[sakuraTools] 热搜")  
+            reply = Reply()  
+            # 获取热搜
+            hot_search_image_io = self.hot_search_request(content) 
+            reply.type = ReplyType.IMAGE if hot_search_image_io else ReplyType.TEXT  
+            reply.content = hot_search_image_io if hot_search_image_io else "获取热搜失败啦，待会再来吧~🐾"  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 

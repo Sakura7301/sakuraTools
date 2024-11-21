@@ -21,5 +21,8 @@
     "dytj_image_path": "plugins/sakuraTools/images/DYTJ",
     "dytj_gua_tu_keyword":["卦图"],
     "dytj_daily_gua_tu_keyword":["每日一卦"],
+    "hot_search_keyword":["热搜"],
+    "hot_search_baidu_keyword":["百度热搜"],
+    "hot_search_weibo_keyword":["微博热搜"],
     "delete_files_time_interval":86400
 }
