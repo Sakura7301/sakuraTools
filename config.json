@@ -1,6 +1,6 @@
 {
     "image_tmp_path":"./plugins/sakuraTools/tmp",
-    "dog_diary_keyword": ["舔狗","舔狗日记","舔狗日常"],
+    "dog_diary_keyword": ["舔狗日记","舔狗日常"],
     "joke_keyword": ["笑话","讲个笑话","来个笑话","来点笑话"],
     "moyu_keyword": ["摸鱼","摸鱼日历"],
     "acg_keyword": ["二次元老婆","ACG美图","acg美图","纸片人老婆","动漫图"],
@@ -25,5 +25,6 @@
     "hot_search_baidu_keyword":["百度热搜"],
     "hot_search_weibo_keyword":["微博热搜"],
     "ai_find_keyword":["搜索", "AI搜索", "ai搜索"],
+    "ai_draw_keyword":["画一个", "画一下", "画一张", "画一张", "画一幅", "画一只", "画一头"],
     "delete_files_time_interval":86400
 }

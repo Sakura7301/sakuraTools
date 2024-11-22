@@ -45,6 +45,7 @@ class sakuraTools(Plugin):
         self.HUANG_LI_URL = "https://www.36jxs.com/api/Commonweal/almanac"
         self.HOT_SEARCH_URL = "https://api.pearktrue.cn/api/60s/image/hot"
         self.AI_FIND_URL = "https://api.pearktrue.cn/api/aisearch/"
+        self.AI_DRAW_URL = "https://api.pearktrue.cn/api/stablediffusion/"
 
         # 初始化配置
         self.config = super().load_config()
@@ -102,6 +103,8 @@ class sakuraTools(Plugin):
         self.hot_search_weibo_keyword = self.config.get("hot_search_weibo_keyword", [])
         # 加载AI搜索关键字
         self.ai_find_keyword = self.config.get("ai_find_keyword", [])
+        # 加载AI画图关键字
+        self.ai_draw_keyword = self.config.get("ai_draw_keyword", [])
         # 加载文件清除时间间隔
         self.delete_files_time_interval = self.config.get("delete_files_time_interval")
         # 存储最后一次删除文件的时间戳  
@@ -1217,6 +1220,52 @@ class sakuraTools(Plugin):
             logger.error(f"其他错误: {err}")
             return None
 
+    def ai_draw_check_keyword(self, content):
+        """
+            检查画图关键字
+        """
+        # 检查关键词   
+        return any(keyword in content for keyword in self.ai_draw_keyword)
+
+    def ai_draw_request(self, url, content):
+        """
+            画图请求函数
+        """
+        try:  
+            call_word = ""
+            # 遍历短语，检查是否在输入字符串中  
+            for phrase in self.ai_draw_keyword:  
+                index = content.find(phrase)  
+                if index != -1:  
+                    # 如果找到短语，提取后面的内容  
+                    call_word = content[index + len(phrase):].strip()  
+            # 默认为方形作画
+            direction = "normal"
+
+            if "横" in content:
+                direction = "horizontal"
+            elif "竖" in content:
+                direction = "vertical"
+
+            params = {
+                "prompt" : call_word,
+                "model"  : direction
+            }
+
+            logger.info(f"AI 画图：{call_word}")
+
+            #本地不存在，从网络获取
+            # http请求
+            response_data = self.http_request_data(url, None, params)
+
+            # 获取绘图url
+            ai_draw_image_url = response_data['imgurl']
+            logger.debug(f"get AI draw image url:{ai_draw_image_url}")
+            return self.download_image(ai_draw_image_url, "ai_draw")
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
+
     def tarot_check_keyword(self, content):
         """
             检查塔罗牌关键字
@@ -1317,7 +1366,7 @@ class sakuraTools(Plugin):
                 "keyword" : question,
             }
 
-            logger.info(f"AI 搜索 {question}")
+            logger.info(f"AI 搜索：{question}")
 
             # http请求
             response_data = self.http_request_data(url, None, params)
@@ -1538,6 +1587,16 @@ class sakuraTools(Plugin):
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
+        elif self.ai_draw_check_keyword(content):
+            logger.debug("[sakuraTools] AI 画图")  
+            reply = Reply()  
+            # AI 画图
+            ai_draw_image_io = self.ai_draw_request(self.AI_DRAW_URL, content) 
+            reply.type = ReplyType.IMAGE if ai_draw_image_io else ReplyType.TEXT  
+            reply.content = ai_draw_image_io if ai_draw_image_io else "画图失败啦，待会再来吧~🐾"  
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
         elif self.joke_check_keyword(content):
             logger.debug("[sakuraTools] 笑话")  
             reply = Reply()  
