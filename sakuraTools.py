@@ -1017,7 +1017,7 @@ class sakuraTools(Plugin):
             }  
 
             # http请求
-            response_data = self.http_request_data(url, params, None)
+            response_data = self.http_request_data(url, None, params)
 
             # 返回星座  
             if response_data["success"]:  
@@ -1118,7 +1118,7 @@ class sakuraTools(Plugin):
         """
         try:  
             # http请求
-            response_data = self.http_request_data(url, None,True)
+            response_data = self.http_request_data(url)
 
             # 返回网易云热评
             if "msg" in response_data:
