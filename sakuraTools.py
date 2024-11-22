@@ -44,6 +44,7 @@ class sakuraTools(Plugin):
         self.NEWSPAPER_URL = "https://api.03c3.cn/api/zb?type=jsonImg"
         self.HUANG_LI_URL = "https://www.36jxs.com/api/Commonweal/almanac"
         self.HOT_SEARCH_URL = "https://api.pearktrue.cn/api/60s/image/hot"
+        self.AI_FIND_URL = "https://api.pearktrue.cn/api/aisearch/"
 
         # 初始化配置
         self.config = super().load_config()
@@ -93,11 +94,14 @@ class sakuraTools(Plugin):
         self.zwlq_jie_qian_keyword = self.config.get("zwlq_jie_qian_keyword", [])
         # 加载断易天机指定卦图关键字
         self.dytj_gua_tu_keyword = self.config.get("dytj_gua_tu_keyword", [])
-        # 加载热搜关键字
+        # 加载每日一卦关键字
         self.dytj_daily_gua_tu_keyword = self.config.get("dytj_daily_gua_tu_keyword", [])
+        # 加载热搜关键字
         self.hot_search_keyword = self.config.get("hot_search_keyword", [])
         self.hot_search_baidu_keyword = self.config.get("hot_search_baidu_keyword", [])
         self.hot_search_weibo_keyword = self.config.get("hot_search_weibo_keyword", [])
+        # 加载AI搜索关键字
+        self.ai_find_keyword = self.config.get("ai_find_keyword", [])
         # 加载文件清除时间间隔
         self.delete_files_time_interval = self.config.get("delete_files_time_interval")
         # 存储最后一次删除文件的时间戳  
@@ -757,7 +761,7 @@ class sakuraTools(Plugin):
             # 打印请求信息  
             logger.debug("发送的HTTP请求:")  
             logger.debug("请求方法: GET")  
-            logger.debug(f"请求URL: {url}")  
+            logger.debug(f"请求URL: {response.url}")  
             logger.debug(f"请求头: {response.request.headers}")
             logger.debug(f"请求体: {response.request.body}") 
 
@@ -1085,6 +1089,57 @@ class sakuraTools(Plugin):
         """
         # 检查关键词   
         return any(keyword in content for keyword in self.kfc_keyword)  
+
+    def extract_sentences(self, text, max_length=128):  
+        # 按照句号分割文本，获取前面的句子  
+        sentences = text.split('。')  
+        extracted_sentences = []  
+
+        for sentence in sentences:  
+            if len(''.join(extracted_sentences)) + len(sentence) + 1 <= max_length:  
+                extracted_sentences.append(sentence.strip())  
+                # 只取前三个句子
+            if len(extracted_sentences) >= 3:    
+                break  
+
+        return ''.join(extracted_sentences) + ('' if extracted_sentences else '') 
+
+    def format_ai_find_result(self, data):  
+        try:
+            # 提取相关问题  
+            # related_questions = data["data"]["related_questions"]  
+
+            # 提取sources并检查是否有百度百科  
+            sources = data["data"]["sources"]  
+            baidu_baike_snippet = ""  
+
+            for source in sources:  
+                if "百度百科" in source["title"]:  
+                    # 如果找到百度百科，限制输出的snippet长度为100个汉字  
+                    full_snippet = source["snippet"].strip() 
+                    baidu_baike_snippet = self.extract_sentences(full_snippet)
+                    baidu_baike_snippet += "..."
+
+            # 创建输出字符串  
+            output = f"搜索[{data['keyword']}]为您找到以下内容：\n\n"  
+
+            # 添加百度百科
+            if baidu_baike_snippet:  
+                output += f"{baidu_baike_snippet}\n\n"  
+            
+            # 添加来源
+            output += "\n".join(  
+                f"[{source['title']}] : {source['link']}\n" for source in sources[:5]  
+            ) + ""  
+
+            # 打印相关问题  
+            # output += "\n相关问题：\n" + "\n".join(f"- {question}" for question in related_questions)  
+
+            return output    
+        except Exception as err:
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)
+            return err_str 
     
     def kfc_request(self, url):  
         """
@@ -1234,6 +1289,42 @@ class sakuraTools(Plugin):
             # 获取黄历  
             huang_li_text = self.parse_huang_li_data(response_data['data'])
             return huang_li_text
+        except Exception as err:  
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)  
+            return err_str  
+
+    def ai_find_check_keyword(self, content):
+        """
+            检查AI搜索关键字
+        """
+        # 检查关键词   
+        return any(keyword in content for keyword in self.ai_find_keyword)
+
+    def ai_find_request(self, url, content):
+        """
+            AI搜索函数
+        """
+        try:  
+            # 使用正则表达式提取 question  
+            pattern = r'(?i)搜索\s*(.*)'  
+            # 使用 re.search 查找第一个匹配
+            match = re.search(pattern, content)
+            # 返回匹配结果并去除前后空格
+            question = match.group(1).strip() if match else None  
+
+            params = {
+                "keyword" : question,
+            }
+
+            logger.info(f"AI 搜索 {question}")
+
+            # http请求
+            response_data = self.http_request_data(url, None, params)
+
+            # 获取结果
+            ai_find_text = self.format_ai_find_result(response_data)
+            return ai_find_text
         except Exception as err:  
             err_str = f"其他错误: {err}"
             logger.error(err_str)  
@@ -1616,6 +1707,16 @@ class sakuraTools(Plugin):
             hot_search_image_io = self.hot_search_request(content) 
             reply.type = ReplyType.IMAGE if hot_search_image_io else ReplyType.TEXT  
             reply.content = hot_search_image_io if hot_search_image_io else "获取热搜失败啦，待会再来吧~🐾"  
+            e_context['reply'] = reply  
+            # 事件结束，并跳过处理context的默认逻辑   
+            e_context.action = EventAction.BREAK_PASS 
+        elif self.ai_find_check_keyword(content):
+            logger.debug("[sakuraTools] AI 搜索")  
+            reply = Reply()  
+            # AI 搜索
+            ai_find_text = self.ai_find_request(self.AI_FIND_URL, content) 
+            reply.type = ReplyType.TEXT  
+            reply.content = ai_find_text 
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
