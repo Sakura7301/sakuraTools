@@ -1,7 +1,7 @@
 # sakuraTools 插件
 
 ## 简介
-**sakuraTools** 是一个基于 chatgpt-on-wechat 的插件，集成了一系列有趣的小功能，包括获取舔狗日记、笑话、摸鱼日历、二次元图片、小姐姐视频、星座运势、虫部落热门帖子，以及疯狂星期四文案等。
+**sakuraTools** 是一个基于 chatgpt-on-wechat 的插件，集成了一系列有趣的小功能，包括获取舔狗日记、笑话、摸鱼日历、二次元图片、小姐姐视频、星座运势、虫部落热门帖子、疯狂星期四文案、以及赛博算卦等功能。
 
 ## 安装
 - 方法一：
@@ -34,6 +34,11 @@
 - **抽签**: 抽取真武灵签。
 - **卦图+卦名**: 获取指定卦图。
 - **每日一卦**: 随机获取一张卦图。
+- **百度热搜**: 获取微博热搜图片。
+- **微博热搜**: 获取百度热搜图片。
+- **AI搜索**: 根据提示词获取AI整合搜索结果。
+- **AI绘图**: 根据提示词生成AI绘图(效果一般、但是免费啊)。
+- **梅花易数**: 根据你的问题使用梅花易数为你占卜。
 
 
 ## 配置
@@ -43,15 +48,15 @@
 ```json
 {
     "image_tmp_path":"./plugins/sakuraTools/tmp",
-    "dog_diary_keyword": ["舔狗","舔狗日记","舔狗日常"],
+    "dog_diary_keyword": ["舔狗日记","舔狗日常"],
     "joke_keyword": ["笑话","讲个笑话","来个笑话","来点笑话"],
     "moyu_keyword": ["摸鱼","摸鱼日历"],
     "acg_keyword": ["二次元老婆","ACG美图","acg美图","纸片人老婆","动漫图"],
-    "young_girl_keyword": ["小姐姐", "老婆"],
+    "young_girl_keyword": ["小姐姐"],
     "beautiful_keyword": ["美女"],
     "chongbuluo_keyword": ["虫部落"],
     "kfc_keyword":["肯德基","kfc","KFC","疯狂星期四"],
-    "wyy_keyword":["网抑云"],
+    "wyy_keyword":["网抑云", "wyy"],
     "newspaper_keyword": ["日报","早报","速读报","快报"],
     "tarot_cards_path": "plugins/sakuraTools/images/TarotCards",
     "tarot_single_keyword":["抽牌", "抽一张牌"],
@@ -64,9 +69,18 @@
     "dytj_image_path": "plugins/sakuraTools/images/DYTJ",
     "dytj_gua_tu_keyword":["卦图"],
     "dytj_daily_gua_tu_keyword":["每日一卦"],
+    "hot_search_keyword":["热搜"],
+    "hot_search_baidu_keyword":["百度热搜"],
+    "hot_search_weibo_keyword":["微博热搜"],
+    "ai_find_keyword":["搜索", "搜一下", "查一下", "AI搜索", "ai搜索"],
+    "ai_draw_keyword":["画一个","画个", "画一下", "画一张", "画一张", "画一幅", "画一只", "画一头"],
+    "mei_hua_yi_shu_keyword":["算算", "算一算","算一卦","卜卦","算一下","来一卦", "开一卦"],
+    "mei_hua_yi_shu": false,
     "delete_files_time_interval":86400
 }
 ```
+
+梅花易数功能目前依赖 `智谱AI` 实现，暂未适配其他AI，默认关闭该功能，如需使用，请将 config.json 中的 `mei_hua_yi_shu` 设置为 `true`。
 
 ## 记录日志
 本插件支持日志记录，所有请求和响应将被记录，方便调试和优化。日志信息将输出到指定的日志文件中，确保可以追踪插件的使用情况。
