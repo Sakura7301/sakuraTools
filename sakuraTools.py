@@ -7,16 +7,18 @@ import random
 import plugins  
 import requests  
 from plugins import *  
-from PIL import Image, ImageDraw 
-from config import conf  
+import concurrent.futures
+from common.log import logger  
 from datetime import datetime  
+from PIL import Image, ImageDraw 
 from bridge.context import ContextType  
 from bridge.reply import Reply, ReplyType  
-from common.log import logger  
-from selenium import webdriver  
-from selenium.webdriver.common.by import By  
-from selenium.webdriver.common.keys import Keys
-
+from bot.zhipuai.zhipu_ai_session import ZhipuAISession
+from bot.zhipuai.zhipuai_bot import ZHIPUAIBot
+from plugins.sakuraTools.meihuayishu import MeiHuaXinYi
+from plugins.sakuraTools.meihuayishu import GetGuaShu
+from plugins.sakuraTools.meihuayishu import FormatZhanBuReply
+from plugins.sakuraTools.meihuayishu import GenZhanBuCueWord
 
 @plugins.register(  
     name="sakuraTools",  # 插件名称  
@@ -105,6 +107,14 @@ class sakuraTools(Plugin):
         self.ai_find_keyword = self.config.get("ai_find_keyword", [])
         # 加载AI画图关键字
         self.ai_draw_keyword = self.config.get("ai_draw_keyword", [])
+        # 加载梅花易数开关
+        self.mei_hua_yi_shu = self.config.get("mei_hua_yi_shu")
+        if self.mei_hua_yi_shu:
+            # 加载梅花易数关键字
+            self.mei_hua_yi_shu_keyword = self.config.get("mei_hua_yi_shu_keyword", [])
+            # 卜卦功能暂时只支持智谱AI
+            # 获取智谱AI类
+            self.ahi_pu_ai = ZHIPUAIBot()
         # 加载文件清除时间间隔
         self.delete_files_time_interval = self.config.get("delete_files_time_interval")
         # 存储最后一次删除文件的时间戳  
@@ -180,22 +190,11 @@ class sakuraTools(Plugin):
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context  
         logger.info("[sakuraTools] 插件初始化完毕")  
 
-    def get_local_file(self, path):
+    def get_reply(self, session: ZhipuAISession):  
         """
-            从插件目录中加载文件
+            定义一个用于获取 AI 回复的函数  
         """
-        # 检查文件是否存在  
-        if os.path.exists(file_path):  
-            # 如果文件存在，读取并返回 io 对象  
-            image = Image.open(file_path)  
-            img_io = io.BytesIO()  
-            image.save(img_io, format='PNG')  
-            # 将指针移动到开头 
-            img_io.seek(0)   
-            return img_io  
-        else:  
-            # 文件不存在，返回 None  
-            return None  
+        return self.ahi_pu_ai.reply_text(session)
 
     def shuffle_tarot_cards(self):  
         """
@@ -1379,6 +1378,54 @@ class sakuraTools(Plugin):
             logger.error(err_str)  
             return err_str  
 
+    def mei_hua_yi_shu_check_keyword(self, content):
+        """
+            检查梅花易数关键字
+        """
+        # 检查关键词   
+        return any(keyword in content for keyword in self.mei_hua_yi_shu_keyword)
+
+    def mei_hua_yi_shu_request(self, session_id, content):
+        """
+            梅花易数
+        """
+        try:  
+            # 获取起卦数
+            qi_gua_num_result = GetGuaShu(content)
+            if qi_gua_num_result and qi_gua_num_result[2] is True:
+                # 使用了随机数，需要进行说明
+                gen_random_num_str = f"卜卦要准确提供3个数字哦，不然会影响准确率哒,下次别忘咯~\n这次我就先用随机数{qi_gua_num_result[0]}帮你起卦叭~\n"
+            else:
+                gen_random_num_str = ""
+            # 数字
+            number = qi_gua_num_result[0]
+            # 问题
+            question = qi_gua_num_result[1]
+            # 调用 MeiHuaXinYi 函数获取结果
+            result = MeiHuaXinYi(number)
+            if result:
+                # 生成占卜提示词
+                prompt = GenZhanBuCueWord(result, question)
+                # 获取会话
+                session = self.ahi_pu_ai.sessions.session_query(prompt, session_id)
+                try:  
+                    # 使用 ThreadPoolExecutor 来设置超时  
+                    with concurrent.futures.ThreadPoolExecutor() as executor:  
+                        # 使用 lambda 函数延迟调用 get_reply 并传递 session 参数  
+                        future = executor.submit(lambda: self.get_reply(session))  
+                        # 设置超时时间为10秒  
+                        reply_content = future.result(timeout=10)  
+                except concurrent.futures.TimeoutError:  
+                    # 如果超时，返回超时提示
+                    reply_content = "大模型超时啦~😕等一下再问叭~🐱"  
+                    logger.warning("[sakuraTools] [ZHIPU_AI] session_id={}, reply_content={}, 处理超时".format(session_id,reply_content)) 
+                # 按照指定格式回复用户
+                return FormatZhanBuReply(gen_random_num_str,question,number,result,reply_content)
+        except Exception as err:  
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)  
+            return err_str  
+
     def zwlq_chou_qian_check_keyword(self, query): 
         # 定义抽签关键词列表
         return any(keyword in query for keyword in self.zwlq_chou_qian_keyword)
@@ -1581,9 +1628,8 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 舔狗日记")  
             reply = Reply()  
             # 获取舔狗日记
-            dog_text = self.dog_request(self.DOG_URL)  
             reply.type = ReplyType.TEXT  
-            reply.content = dog_text 
+            reply.content = self.dog_request(self.DOG_URL)  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
@@ -1601,9 +1647,8 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 笑话")  
             reply = Reply()  
             # 获取笑话
-            dog_text = self.joke_request(self.JOKE_URL) 
             reply.type = ReplyType.TEXT  
-            reply.content = dog_text 
+            reply.content = self.joke_request(self.JOKE_URL) 
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
@@ -1664,9 +1709,8 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 虫部落热门")  
             reply = Reply()  
             # 获取虫部落热门
-            chongbuluo_text = self.chongbuluo_request(self.CBL_URL) 
             reply.type = ReplyType.TEXT  
-            reply.content = chongbuluo_text 
+            reply.content = self.chongbuluo_request(self.CBL_URL)  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS  
@@ -1674,9 +1718,8 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 疯狂星期四")  
             reply = Reply()  
             # 获取疯狂星期四文案
-            kfc_text = self.kfc_request(self.KFC_URL) 
             reply.type = ReplyType.TEXT  
-            reply.content = kfc_text 
+            reply.content = self.kfc_request(self.KFC_URL)  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
@@ -1684,9 +1727,8 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 网抑云")  
             reply = Reply()  
             # 获取网抑云评论
-            wyy_text = self.wyy_request(self.WYY_URL) 
             reply.type = ReplyType.TEXT  
-            reply.content = wyy_text 
+            reply.content = self.wyy_request(self.WYY_URL)  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
@@ -1714,9 +1756,8 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 黄历")  
             reply = Reply()  
             # 获取黄历
-            huang_li_text = self.huang_li_request(self.HUANG_LI_URL) 
             reply.type = ReplyType.TEXT  
-            reply.content = huang_li_text 
+            reply.content = self.huang_li_request(self.HUANG_LI_URL) 
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
@@ -1773,12 +1814,24 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] AI 搜索")  
             reply = Reply()  
             # AI 搜索
-            ai_find_text = self.ai_find_request(self.AI_FIND_URL, content) 
             reply.type = ReplyType.TEXT  
-            reply.content = ai_find_text 
+            reply.content = self.ai_find_request(self.AI_FIND_URL, content)  
             e_context['reply'] = reply  
             # 事件结束，并跳过处理context的默认逻辑   
             e_context.action = EventAction.BREAK_PASS 
+        elif self.mei_hua_yi_shu:
+            # 梅花易数功能需要使用ai生成回复，因此目前只支持智谱AI
+            if self.mei_hua_yi_shu_check_keyword(content):
+                logger.debug("[sakuraTools] 梅花易数")  
+                # 获取session_id
+                session_id = e_context["context"]["session_id"]
+                reply = Reply()  
+                # 梅花易数
+                reply.type = ReplyType.TEXT  
+                reply.content = self.mei_hua_yi_shu_request(session_id, content) 
+                e_context['reply'] = reply  
+                # 事件结束，并跳过处理context的默认逻辑   
+                e_context.action = EventAction.BREAK_PASS 
         else:
             # 检查文件缓存是否需要清除，默认一天清除一次
             self.check_and_delete_files()
