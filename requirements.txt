@@ -1,6 +1,5 @@
 Pillow  
 requests  
-concurrent.futures  
 pytz  
 lunar-python  
 zhdate
