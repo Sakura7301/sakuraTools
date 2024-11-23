@@ -1422,6 +1422,10 @@ class sakuraTools(Plugin):
                     logger.warning("[sakuraTools] [ZHIPU_AI] session_id={}, reply_content={}, 处理超时".format(session_id,reply_content)) 
                 # 按照指定格式回复用户
                 return FormatZhanBuReply(gen_random_num_str,question,number,result,reply_content)
+            else:
+                # MeiHuaXinYi 函数返回 None，说明数字不在范围内
+                mei_hua_reply_text = "输入的数字不在指定范围内，请提供一个介于100到999之间的数字。"
+                return mei_hua_reply_text
         except Exception as err:  
             err_str = f"其他错误: {err}"
             logger.error(err_str)  
