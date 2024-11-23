@@ -56,13 +56,13 @@ class sakuraTools(Plugin):
             self.config = self._load_config_template()
         
         # 加载图片临时目录
-        self.image_tmp_path = self.config.get("image_tmp_path")
+        self.image_tmp_path = "./plugins/sakuraTools/tmp"
         # 加载塔罗牌目录
-        self.tarot_cards_path = self.config.get("tarot_cards_path")
+        self.tarot_cards_path = "plugins/sakuraTools/images/TarotCards"
         # 加载真武灵签目录
-        self.zwlq_image_path = self.config.get("zwlq_image_path")
+        self.zwlq_image_path = "plugins/sakuraTools/images/ZWLQ"
         # 加载断易天机64卦卦图目录
-        self.dytj_image_path = self.config.get("dytj_image_path")
+        self.dytj_image_path = "plugins/sakuraTools/images/DYTJ"
         # 加载舔狗日记关键字
         self.dog_keyword = self.config.get("dog_diary_keyword", [])
         # 加载笑话关键字
