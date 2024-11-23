@@ -1,3 +1,6 @@
-Pillow==10.0.0  
-selenium==4.21.0  
-requests==2.30.0
+Pillow  
+requests  
+concurrent.futures  
+pytz  
+lunar-python  
+zhdate
