@@ -923,7 +923,8 @@ class sakuraTools(Plugin):
                     logger.debug(f"get mo_yu image url:{mo_yu_url}")
                     return self.download_image(mo_yu_url, "mo_yu")
                 else:  
-                    logger.error(f"错误信息: {response_data['message']}")  
+                    err_str = f"错误信息: {response_data['message']}"
+                    logger.error(err_str)  
                     return err_str  
         except Exception as err:
             logger.error(f"其他错误: {err}")
