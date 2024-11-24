@@ -61,7 +61,6 @@
     "tarot_three_keyword":["三牌阵","三张牌阵","过去-现在-未来阵"],
     "tarot_cross_keyword":["凯尔特十字","凯尔特十字牌阵","十字牌阵","十字阵"],
     "huang_li_keyword":["黄历","老黄历","今日黄历","黄历查询"],
-    "zwlq_image_path": "plugins/sakuraTools/images/ZWLQ",
     "zwlq_chou_qian_keyword": ["抽签","抽签查询","抽签结果", "每日一签"],
     "zwlq_jie_qian_keyword":["解签","解签查询","解签结果"],
     "dytj_gua_tu_keyword":["卦图"],
@@ -78,6 +77,47 @@
 ```
 
 梅花易数功能目前依赖 `智谱AI` 实现，暂未适配其他AI，默认关闭该功能，如需使用，请将 config.json 中的 `mei_hua_yi_shu` 设置为 `true`。
+
+## 功能展示
+#### 梅花易数卜卦
+![image](https://github.com/user-attachments/assets/f78e62f0-5170-4dc5-b721-03c304bfe95d)
+#### 舔狗日记
+![image](https://github.com/user-attachments/assets/a42d1eab-5030-4dae-993b-6f5be6c81aef)
+#### 笑话
+![image](https://github.com/user-attachments/assets/20b6264c-3530-40c1-80cc-e686e118d30c)
+#### 摸鱼日历
+![image](https://github.com/user-attachments/assets/80620175-6d50-474a-b370-ac837781e8e2)
+#### 二次元美图
+![image](https://github.com/user-attachments/assets/e5db198d-3190-450e-955d-93ffec93fbe9)
+#### 小姐姐视频
+![image](https://github.com/user-attachments/assets/92bbf9d6-4b00-44b1-9402-550f9ce13c8f)
+#### 美女视频
+![image](https://github.com/user-attachments/assets/969ec749-981b-40e9-8fbd-9d442f4dbd91)
+#### 虫部落热搜
+![image](https://github.com/user-attachments/assets/bc6d4650-fe42-45d5-b521-bac741f14baa)
+#### 疯狂星期四文案
+![image](https://github.com/user-attachments/assets/8e23893c-7bbc-41f4-bc92-dafbc4b54a0c)
+#### 网易云热论
+![image](https://github.com/user-attachments/assets/0559f870-ef3f-41c1-8ed0-6795694b2aac)
+#### 早报
+![image](https://github.com/user-attachments/assets/30094629-e5b6-41d7-8957-0d6ae41fe5c9)
+#### 塔罗牌
+![image](https://github.com/user-attachments/assets/f495c476-cc99-407c-89f9-d9828651ae5a)
+![image](https://github.com/user-attachments/assets/a7cd8eb8-e801-4fac-ab54-b1810ab99ca5)
+#### 黄历
+![image](https://github.com/user-attachments/assets/28b3c75a-41b1-48ea-b40c-2b21ec3e90f0)
+#### 真武灵签
+![image](https://github.com/user-attachments/assets/6510985b-8425-4505-9944-34734078d31c)
+#### 断易天机卦图
+![image](https://github.com/user-attachments/assets/b1fba9ae-e345-4cfd-beb1-eb49d7d03f78)
+![image](https://github.com/user-attachments/assets/176d86b4-1b55-473b-a127-0b64ed53361f)
+#### 热搜
+![image](https://github.com/user-attachments/assets/9b5ad541-2e1e-43ab-beb1-d3e6bb10c885)
+#### AI搜索
+![image](https://github.com/user-attachments/assets/c1720148-8032-47d0-a862-02fc63305a6a)
+#### AI绘图
+![image](https://github.com/user-attachments/assets/9c7144d8-b818-4fcc-b5e0-ad697646c646)
+
 
 ## 记录日志
 本插件支持日志记录，所有请求和响应将被记录，方便调试和优化。日志信息将输出到指定的日志文件中，确保可以追踪插件的使用情况。
