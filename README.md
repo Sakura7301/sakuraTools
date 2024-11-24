@@ -47,7 +47,6 @@
 示例配置：
 ```json
 {
-    "image_tmp_path":"./plugins/sakuraTools/tmp",
     "dog_diary_keyword": ["舔狗日记","舔狗日常"],
     "joke_keyword": ["笑话","讲个笑话","来个笑话","来点笑话"],
     "moyu_keyword": ["摸鱼","摸鱼日历"],
@@ -58,7 +57,6 @@
     "kfc_keyword":["肯德基","kfc","KFC","疯狂星期四"],
     "wyy_keyword":["网抑云", "wyy"],
     "newspaper_keyword": ["日报","早报","速读报","快报"],
-    "tarot_cards_path": "plugins/sakuraTools/images/TarotCards",
     "tarot_single_keyword":["抽牌", "抽一张牌"],
     "tarot_three_keyword":["三牌阵","三张牌阵","过去-现在-未来阵"],
     "tarot_cross_keyword":["凯尔特十字","凯尔特十字牌阵","十字牌阵","十字阵"],
@@ -66,7 +64,6 @@
     "zwlq_image_path": "plugins/sakuraTools/images/ZWLQ",
     "zwlq_chou_qian_keyword": ["抽签","抽签查询","抽签结果", "每日一签"],
     "zwlq_jie_qian_keyword":["解签","解签查询","解签结果"],
-    "dytj_image_path": "plugins/sakuraTools/images/DYTJ",
     "dytj_gua_tu_keyword":["卦图"],
     "dytj_daily_gua_tu_keyword":["每日一卦"],
     "hot_search_keyword":["热搜"],
