@@ -101,6 +101,8 @@
 ![image](https://github.com/user-attachments/assets/0559f870-ef3f-41c1-8ed0-6795694b2aac)
 #### 早报
 ![image](https://github.com/user-attachments/assets/30094629-e5b6-41d7-8957-0d6ae41fe5c9)
+#### 星座运势
+![image](https://github.com/user-attachments/assets/e5500c07-8761-49d4-ad4b-0bdb1cd78453)
 #### 塔罗牌
 ![image](https://github.com/user-attachments/assets/f495c476-cc99-407c-89f9-d9828651ae5a)
 ![image](https://github.com/user-attachments/assets/a7cd8eb8-e801-4fac-ab54-b1810ab99ca5)
