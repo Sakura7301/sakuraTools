@@ -88,6 +88,11 @@
 - 提交 issues 到项目的 GitHub 页面。
 - 发送邮件至 [你的邮箱]。
 
+## 赞助
+开发不易，我的朋友，如果你想请我喝杯咖啡的话(笑)
+![c6841ad72c2f4a46ed6c2bec648d386](https://github.com/user-attachments/assets/db273642-1787-4195-af52-7b14c8733405)
+
+
 ## 许可
 此项目采用 Apache License 版本 2.0，详细信息请查看 [LICENSE](LICENSE)。
 
