@@ -90,7 +90,8 @@
 
 ## 赞助
 开发不易，我的朋友，如果你想请我喝杯咖啡的话(笑)
-![c6841ad72c2f4a46ed6c2bec648d386](https://github.com/user-attachments/assets/db273642-1787-4195-af52-7b14c8733405)
+
+<img src="https://github.com/user-attachments/assets/db273642-1787-4195-af52-7b14c8733405" alt="image" width="300"/> 
 
 
 ## 许可
