@@ -39,7 +39,7 @@ class sakuraTools(Plugin):
         super().__init__()
         # 定义目标URL
         self.DOG_URL = "https://api.vvhan.com/api/text/dog?type=json"
-        self.JOKE_URL = "https://api.vvhan.com/api/text/joke?type=json"
+        self.JOKE_URL = "https://api.pearktrue.cn/api/jdyl/xiaohua.php"
         self.MOYU_URL = "https://api.vvhan.com/api/moyu?type=json"
         self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
         self.YOUNG_GIRL_URL = "https://api.apiopen.top/api/getMiniVideo?page=0&size=1"
@@ -764,7 +764,7 @@ class sakuraTools(Plugin):
             return None
 
     # http通用请求接口
-    def http_request_data(self, url, user_headers=None, user_params=None, verify_flag=None, json=True):
+    def http_request_data(self, url, response_type : str, user_headers=None, user_params=None, verify_flag=None):
         """
             通用的HTTP请求函数
         """
@@ -792,11 +792,15 @@ class sakuraTools(Plugin):
             logger.debug(f"响应头: {response.headers}")
 
             # 解析响应体
-            if json:
-                response_data = response.json()
-            else :
+            if "raw" == response_type:
                 # 直接返回二进制流
                 response_data = response.content
+            elif "text" == response_type:
+                # 返回文本
+                response_data = response.text
+            else :
+                # 默认按json处理
+                response_data = response.json()
 
             return response_data
         except requests.exceptions.HTTPError as http_err:
@@ -889,18 +893,13 @@ class sakuraTools(Plugin):
         """
         try:
             # http请求
-            response_data = self.http_request_data(url)
+            response_data = self.http_request_data(url, "text")
 
             # 返回笑话
-            if response_data["success"]:
-                # 获取笑话内容
-                joke_str = f"""[{response_data['data']['title']}]\n{response_data['data']['content']}\n(希望这则笑话能带给你快乐~🐾)"""
-                logger.debug(f"get joke text:{joke_str}")
-                return joke_str
-            else:
-                err_str = f"错误信息: {response_data['message']}"
-                logger.error(err_str)
-                return err_str
+            # 获取笑话内容
+            joke_str = f"""{response_data}\n(希望这则笑话能带给你快乐~🐾)"""
+            logger.debug(f"get joke text:{joke_str}")
+            return joke_str
         except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
@@ -1038,7 +1037,7 @@ class sakuraTools(Plugin):
             }
 
             # http请求
-            response_data = self.http_request_data(url, None, params)
+            response_data = self.http_request_data(url, None, None, params)
 
             # 返回星座
             if response_data["success"]:
@@ -1270,7 +1269,7 @@ class sakuraTools(Plugin):
 
             #本地不存在，从网络获取
             # http请求
-            response_data = self.http_request_data(url, None, params)
+            response_data = self.http_request_data(url, None, None, params)
 
             # 获取绘图url
             ai_draw_image_url = response_data['imgurl']
@@ -1347,7 +1346,7 @@ class sakuraTools(Plugin):
             }
 
             # http请求
-            response_data = self.http_request_data(url, headers, params, None)
+            response_data = self.http_request_data(url, None, headers, params)
 
             # 获取黄历
             huang_li_text = self.parse_huang_li_data(response_data['data'])
@@ -1383,7 +1382,7 @@ class sakuraTools(Plugin):
             logger.info(f"AI 搜索：{question}")
 
             # http请求
-            response_data = self.http_request_data(url, None, params)
+            response_data = self.http_request_data(url, None, None, params)
 
             # 获取结果
             ai_find_text = self.format_ai_find_result(response_data)
@@ -1621,7 +1620,7 @@ class sakuraTools(Plugin):
             #本地不存在，从网络获取
             # http请求
             logger.info(f"[sakuraTools] 从网络获取 {hot_search_type} 热搜")
-            response_data = self.http_request_data(url, None, params, None, False)
+            response_data = self.http_request_data(url, "raw", None, params, None)
 
             # 获取早报内容
             logger.debug(f"get {hot_search_type} image text")
