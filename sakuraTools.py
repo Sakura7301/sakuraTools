@@ -120,10 +120,8 @@ class sakuraTools(Plugin):
             # 卜卦功能暂时只支持智谱AI
             # 获取智谱AI类
             self.ahi_pu_ai = ZHIPUAIBot()
-        # 加载文件清除时间间隔
-        self.delete_files_time_interval = self.config.get("delete_files_time_interval")
-        # 存储最后一次删除文件的时间戳
-        self.last_delete_files_time = None
+        # 存储上一次清理日期
+        self.last_cleanup_date = None
         # 星座名映射
         self.ZODIAC_MAPPING = {
             '白羊座': 'aries',
@@ -552,24 +550,22 @@ class sakuraTools(Plugin):
         """
             检查并删除文件的主函数
         """
-        # 获取当前秒级时间戳
-        timestamp = time.time()
-        # 第一次调用时，设置删除时间
-        if self.last_delete_files_time is None:
-            # 初始化时间戳
-            self.last_delete_files_time = timestamp
+        # 获取当前时间
+        now = datetime.now()
+        today = now.date()
+
+        if self.last_cleanup_date is None:
+            # 第一次调用
             # 清空目录下的所有文件
             self.delete_all_files_in_directory(self.image_tmp_path)
             logger.info(f"已清空{self.image_tmp_path}目录下的所有文件")
-            return
-
-        # 检查时间差
-        if (timestamp - self.last_delete_files_time) >= self.delete_files_time_interval:
+            self.last_cleanup_date = today
+        elif self.last_cleanup_date < today:
+            # 检查是否过了一天
             # 清空目录下的所有文件
-            self.delete_all_files_in_directory()
+            self.delete_all_files_in_directory(self.image_tmp_path)
             logger.info(f"已清空{self.image_tmp_path}目录下的所有文件")
-            # 更新最后删除时间
-            self.last_delete_files_time = timestamp
+            self.last_cleanup_date = today
 
     def delete_all_files_in_directory(self, directory):
         """
@@ -1643,9 +1639,10 @@ class sakuraTools(Plugin):
 
         # 获取消息内容并去除首尾空格
         content = e_context["context"].content.strip()
-
         # 预定义塔罗牌选择类型
         tarot_num = 0
+        # 检查缓存文件是否需要清除，默认每天00:00清除
+        self.check_and_delete_files()
 
         if self.dog_check_keyword(content):
             logger.debug("[sakuraTools] 舔狗日记")
@@ -1855,9 +1852,6 @@ class sakuraTools(Plugin):
                 e_context['reply'] = reply
                 # 事件结束，并跳过处理context的默认逻辑
                 e_context.action = EventAction.BREAK_PASS
-        else:
-            # 检查文件缓存是否需要清除，默认一天清除一次
-            self.check_and_delete_files()
 
     def get_help_text(self, **kwargs):
         """获取帮助文本"""
