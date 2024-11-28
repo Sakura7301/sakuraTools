@@ -764,7 +764,7 @@ class sakuraTools(Plugin):
             return None
 
     # http通用请求接口
-    def http_request_data(self, url, response_type : str, user_headers=None, user_params=None, verify_flag=None):
+    def http_request_data(self, url, response_type=None, user_headers=None, user_params=None, verify_flag=None):
         """
             通用的HTTP请求函数
         """
