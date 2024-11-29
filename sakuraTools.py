@@ -53,6 +53,7 @@ class sakuraTools(Plugin):
         self.HOT_SEARCH_URL = "https://api.pearktrue.cn/api/60s/image/hot"
         self.AI_FIND_URL = "https://api.pearktrue.cn/api/aisearch/"
         self.AI_DRAW_URL = "https://api.pearktrue.cn/api/stablediffusion/"
+        self.DRAW_CARD_URL = "https://www.hhlqilongzhu.cn/api/tu_tlp.php"
 
         # 初始化配置
         self.config = super().load_config()
@@ -88,6 +89,8 @@ class sakuraTools(Plugin):
         self.wyy_keyword = self.config.get("wyy_keyword", [])
         # 加载早报关键字
         self.newspaper_keyword = self.config.get("newspaper_keyword", [])
+        # 加载抽卡关键字
+        self.draw_card_keyword = self.config.get("draw_card_keyword", [])
         # 加载塔罗牌单抽牌关键字
         self.tarot_single_keyword = self.config.get("tarot_single_keyword", [])
         # 加载塔罗牌三牌阵关键字
@@ -971,6 +974,29 @@ class sakuraTools(Plugin):
             logger.error(f"其他错误: {err}")
             return None
 
+    def draw_card_check_keyword(self, content):
+        """
+            检查抽卡关键字
+        """
+        # 检查关键词
+        return any(keyword in content for keyword in self.draw_card_keyword)
+
+    def draw_card_request(self, url):
+        """
+            ACG图片请求函数
+        """
+        try:
+
+            # http请求
+            response_data = self.http_request_data(url, "raw")
+
+            # 获取抽卡内容
+            logger.debug(f"get draw card image")
+            return self.download_image(None, "draw_card", response_data)
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
+
     def young_girl_check_keyword(self, content):
         """
             检查小姐姐视频关键字
@@ -1835,6 +1861,16 @@ class sakuraTools(Plugin):
             # AI 搜索
             reply.type = ReplyType.TEXT
             reply.content = self.ai_find_request(self.AI_FIND_URL, content)
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
+        elif self.draw_card_check_keyword(content):
+            logger.debug("[sakuraTools] 抽卡")
+            reply = Reply()
+            # 获取抽卡结果
+            draw_card_image_io = self.draw_card_request(self.DRAW_CARD_URL)
+            reply.type = ReplyType.IMAGE if draw_card_image_io else ReplyType.TEXT
+            reply.content = draw_card_image_io if draw_card_image_io else "抽卡失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
