@@ -45,6 +45,7 @@ class sakuraTools(Plugin):
         self.YOUNG_GIRL_URL = "https://api.apiopen.top/api/getMiniVideo?page=0&size=1"
         self.BEAUTIFUL_URL = "https://api.kuleu.com/api/MP4_xiaojiejie?type=json"
         self.CONSTELLATION_URL = "https://api.vvhan.com/api/horoscope"
+        self.CONSTELLATION_URL_BACKUP = "https://xiaobapi.top/api/xb/api/xingzuo.php"
         self.CBL_URL = "https://api.vvhan.com/api/hotlist/chongBluo"
         self.KFC_URL = "https://api.pearktrue.cn/api/kfc"
         self.WYY_URL = "https://zj.v.api.aa1.cn/api/wenan-wy/?type=json"
@@ -55,6 +56,7 @@ class sakuraTools(Plugin):
         self.AI_DRAW_URL = "https://api.pearktrue.cn/api/stablediffusion/"
         self.DRAW_CARD_URL = "https://www.hhlqilongzhu.cn/api/tu_tlp.php"
         self.FORTUNE_URL = "https://www.hhlqilongzhu.cn/api/tu_yunshi.php"
+        self.MEME_URL = "https://xiaobapi.top/api/xb/api/tp.php"
 
         # 初始化配置
         self.config = super().load_config()
@@ -90,6 +92,8 @@ class sakuraTools(Plugin):
         self.wyy_keyword = self.config.get("wyy_keyword", [])
         # 加载早报关键字
         self.newspaper_keyword = self.config.get("newspaper_keyword", [])
+        # 加载随机表情包关键字(可能这样子更人性化一些？)
+        self.meme_keyword = self.config.get("meme_keyword", [])
         # 加载抽卡关键字
         self.draw_card_keyword = self.config.get("draw_card_keyword", [])
         # 加载运势关键字
@@ -1017,9 +1021,32 @@ class sakuraTools(Plugin):
             # http请求
             response_data = self.http_request_data(url, "raw")
 
-            # 获取抽卡内容
+            # 获取运势内容
             logger.debug(f"get fortune image")
             return self.download_image(None, "fortune", response_data)
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
+
+    def meme_check_keyword(self, content):
+        """
+            检查表情关键字
+        """
+        # 检查关键词
+        return any(keyword in content for keyword in self.meme_keyword)
+
+    def meme_request(self, url):
+        """
+            表情包请求函数
+        """
+        try:
+
+            # http请求
+            response_data = self.http_request_data(url, "raw")
+
+            # 获取表情包内容
+            logger.debug(f"get meme image")
+            return self.download_image(None, "meme", response_data)
         except Exception as err:
             logger.error(f"其他错误: {err}")
             return None
@@ -1077,7 +1104,7 @@ class sakuraTools(Plugin):
         horoscope_match = re.match(r'^([\u4e00-\u9fa5]{2}座)$', content)
         return horoscope_match
 
-    def constellation_request(self, zodiac_english, url):
+    def constellation_request(self, zodiac_english, url, backup_url):
         """
             星座请求函数
         """
@@ -1771,7 +1798,7 @@ class sakuraTools(Plugin):
             # 获取今日星座运势
             if content in self.ZODIAC_MAPPING:
                 zodiac_english = self.ZODIAC_MAPPING[content]
-                reply.content = self.constellation_request(zodiac_english, self.CONSTELLATION_URL)
+                reply.content = self.constellation_request(zodiac_english, self.CONSTELLATION_URL, self.CONSTELLATION_URL_BACKUP)
             else:
                 reply.content = "输入有问题哦，请重新输入星座名称~🐾"
             e_context['reply'] = reply
@@ -1908,6 +1935,16 @@ class sakuraTools(Plugin):
             fortune_image_io = self.fortune_request(self.FORTUNE_URL)
             reply.type = ReplyType.IMAGE if fortune_image_io else ReplyType.TEXT
             reply.content = fortune_image_io if fortune_image_io else "获取运势失败啦，待会再来吧~🐾"
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
+        elif self.meme_check_keyword(content):
+            logger.debug("[sakuraTools] 表情包")
+            reply = Reply()
+            # 获取表情包结果
+            meme_image_io = self.meme_request(self.MEME_URL)
+            reply.type = ReplyType.IMAGE if meme_image_io else ReplyType.TEXT
+            reply.content = meme_image_io if meme_image_io else "获取表情失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
