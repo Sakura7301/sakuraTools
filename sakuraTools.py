@@ -54,6 +54,7 @@ class sakuraTools(Plugin):
         self.AI_FIND_URL = "https://api.pearktrue.cn/api/aisearch/"
         self.AI_DRAW_URL = "https://api.pearktrue.cn/api/stablediffusion/"
         self.DRAW_CARD_URL = "https://www.hhlqilongzhu.cn/api/tu_tlp.php"
+        self.FORTUNE_URL = "https://www.hhlqilongzhu.cn/api/tu_yunshi.php"
 
         # 初始化配置
         self.config = super().load_config()
@@ -91,6 +92,8 @@ class sakuraTools(Plugin):
         self.newspaper_keyword = self.config.get("newspaper_keyword", [])
         # 加载抽卡关键字
         self.draw_card_keyword = self.config.get("draw_card_keyword", [])
+        # 加载运势关键字
+        self.fortune_keyword = self.config.get("fortune_keyword", [])
         # 加载塔罗牌单抽牌关键字
         self.tarot_single_keyword = self.config.get("tarot_single_keyword", [])
         # 加载塔罗牌三牌阵关键字
@@ -983,7 +986,7 @@ class sakuraTools(Plugin):
 
     def draw_card_request(self, url):
         """
-            ACG图片请求函数
+            抽卡请求函数
         """
         try:
 
@@ -993,6 +996,29 @@ class sakuraTools(Plugin):
             # 获取抽卡内容
             logger.debug(f"get draw card image")
             return self.download_image(None, "draw_card", response_data)
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
+
+    def fortune_check_keyword(self, content):
+        """
+            检查运势关键字
+        """
+        # 检查关键词
+        return any(keyword in content for keyword in self.fortune_keyword)
+
+    def fortune_request(self, url):
+        """
+            运势请求函数
+        """
+        try:
+
+            # http请求
+            response_data = self.http_request_data(url, "raw")
+
+            # 获取抽卡内容
+            logger.debug(f"get fortune image")
+            return self.download_image(None, "fortune", response_data)
         except Exception as err:
             logger.error(f"其他错误: {err}")
             return None
@@ -1874,6 +1900,16 @@ class sakuraTools(Plugin):
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
+        elif self.fortune_check_keyword(content):
+            logger.debug("[sakuraTools] 运势")
+            reply = Reply()
+            # 获取抽卡结果
+            fortune_image_io = self.fortune_request(self.FORTUNE_URL)
+            reply.type = ReplyType.IMAGE if fortune_image_io else ReplyType.TEXT
+            reply.content = fortune_image_io if fortune_image_io else "获取运势失败啦，待会再来吧~🐾"
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
         elif self.mei_hua_yi_shu:
             # 梅花易数功能需要使用ai生成回复，因此目前只支持智谱AI
             if self.mei_hua_yi_shu_check_keyword(content):
@@ -1890,5 +1926,5 @@ class sakuraTools(Plugin):
 
     def get_help_text(self, **kwargs):
         """获取帮助文本"""
-        help_text = "\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [美女]：获取一条美女视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n -[黄历]：获取今日黄历\n- [抽牌]：抽取单张塔罗牌\n- [三牌阵]：抽取塔罗牌三牌阵\n- [十字牌阵]：抽取塔罗牌十字牌阵\n- [每日一卦]：获取随机卦图\n- [卦图+卦名]：获取对应卦图\n- [微博热搜]：获取微博热搜\n- [百度热搜]：获取百度热搜\n- [AI搜索]：输入 `搜索 + 关键词`可以获取整合信息\n- [AI画图]：输入`画一个 + 关键字`可以生成ai图片\n- [梅花易数] 输入`算算` + `你想问的问题` + `三位数字`即可获得占卜结果\n"
+        help_text = "\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [美女]：获取一条美女视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n -[黄历]：获取今日黄历\n- [抽牌]：抽取单张塔罗牌\n- [三牌阵]：抽取塔罗牌三牌阵\n- [十字牌阵]：抽取塔罗牌十字牌阵\n- [每日一卦]：获取随机卦图\n- [卦图+卦名]：获取对应卦图\n- [微博热搜]：获取微博热搜\n- [百度热搜]：获取百度热搜\n- [AI搜索]：输入 `搜索 + 关键词`可以获取整合信息\n- [AI画图]：输入`画一个 + 关键字`可以生成ai图片\n- [梅花易数] 输入`算算` + `你想问的问题` + `三位数字`即可获得占卜结果\n- [抽卡]：获取带有解释的塔罗牌。\n- [运势]：获取你的运势。\n"
         return help_text
