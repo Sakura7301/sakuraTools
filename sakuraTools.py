@@ -41,7 +41,7 @@ class sakuraTools(Plugin):
         self.DOG_URL = "https://api.vvhan.com/api/text/dog?type=json"
         self.JOKE_URL = "https://api.pearktrue.cn/api/jdyl/xiaohua.php"
         self.MOYU_URL = "https://api.vvhan.com/api/moyu?type=json"
-        self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
+        self.ACG_URL = "https://xiaobapi.top/api/xb/api/pixiv.php"
         self.YOUNG_GIRL_URL = "https://api.apiopen.top/api/getMiniVideo?page=0&size=1"
         self.BEAUTIFUL_URL = "https://api.kuleu.com/api/MP4_xiaojiejie?type=json"
         self.CONSTELLATION_URL = "https://api.vvhan.com/api/horoscope"
@@ -703,8 +703,13 @@ class sakuraTools(Plugin):
             if image_raw:
                 write_text = image_raw
             else:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
+                    "Referer": "https://i.yuki.sh/"
+                }
+
                 # 下载图片
-                response = requests.get(image_url)
+                response = requests.get(image_url, headers=headers)
                 # 检查请求是否成功
                 response.raise_for_status()
                 # 待写入文件内容
@@ -965,14 +970,10 @@ class sakuraTools(Plugin):
             response_data = self.http_request_data(url)
 
             # 返回响应的数据内容
-            if response_data["success"]:
-                # 获取acg内容
-                acg_image_url = response_data['url']
-                logger.debug(f"get acg image url:{acg_image_url}")
-                return acg_image_url
-            else:
-                logger.error(f"错误信息: {response_data['message']}")
-                return None
+            # 获取acg内容
+            acg_image_url = response_data['data'][0]['urls']['original']
+            logger.debug(f"get acg image url:{acg_image_url}")
+            return self.download_image(acg_image_url, "acg")
         except Exception as err:
             logger.error(f"其他错误: {err}")
             return None
@@ -1737,9 +1738,9 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 二次元")
             reply = Reply()
             # 获取二次元小姐姐
-            acg_image_url = self.acg_request(self.ACG_URL)
-            reply.type = ReplyType.IMAGE_URL if acg_image_url else ReplyType.TEXT
-            reply.content = acg_image_url if acg_image_url else "获取二次元小姐姐失败啦，待会再来吧~🐾"
+            acg_image_io = self.acg_request(self.ACG_URL)
+            reply.type = ReplyType.IMAGE if acg_image_io else ReplyType.TEXT
+            reply.content = acg_image_io if acg_image_io else "获取二次元小姐姐失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
