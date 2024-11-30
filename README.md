@@ -74,12 +74,9 @@
     "hot_search_weibo_keyword":["微博热搜"],
     "ai_find_keyword":["搜索", "搜一下", "查一下", "AI搜索", "ai搜索"],
     "ai_draw_keyword":["画一个","画个", "画一下", "画一张", "画一张", "画一幅", "画一只", "画一头"],
-    "mei_hua_yi_shu_keyword":["算算", "算一算","算一卦","卜卦","算一下","来一卦", "开一卦"],
-    "mei_hua_yi_shu": false
+    "mei_hua_yi_shu_keyword":["算算", "算一算","算一卦","卜卦","算一下","来一卦", "开一卦"]
 }
 ```
-
-梅花易数功能目前依赖 `智谱AI` 实现，暂未适配其他AI，默认关闭该功能，如需使用，请将 config.json 中的 `mei_hua_yi_shu` 设置为 `true`。
 
 ## 功能展示
 #### 梅花易数卜卦

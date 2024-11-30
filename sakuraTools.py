@@ -11,14 +11,9 @@ import concurrent.futures
 from common.log import logger
 from datetime import datetime
 from PIL import Image, ImageDraw
-from bridge.context import ContextType
+from bridge.bridge import Bridge
+from bridge.context import ContextType, Context
 from bridge.reply import Reply, ReplyType
-try:
-    from bot.zhipuai.zhipu_ai_session import ZhipuAISession
-    from bot.zhipuai.zhipuai_bot import ZHIPUAIBot
-except Exception as e:
-    logger.warning(f"未安装zhipuai: {e}")
-
 from plugins.sakuraTools.meihuayishu import MeiHuaXinYi
 from plugins.sakuraTools.meihuayishu import GetGuaShu
 from plugins.sakuraTools.meihuayishu import FormatZhanBuReply
@@ -124,12 +119,8 @@ class sakuraTools(Plugin):
         self.ai_draw_keyword = self.config.get("ai_draw_keyword", [])
         # 加载梅花易数开关
         self.mei_hua_yi_shu = self.config.get("mei_hua_yi_shu")
-        if self.mei_hua_yi_shu:
-            # 加载梅花易数关键字
-            self.mei_hua_yi_shu_keyword = self.config.get("mei_hua_yi_shu_keyword", [])
-            # 卜卦功能暂时只支持智谱AI
-            # 获取智谱AI类
-            self.ahi_pu_ai = ZHIPUAIBot()
+        # 加载梅花易数关键字
+        self.mei_hua_yi_shu_keyword = self.config.get("mei_hua_yi_shu_keyword", [])
         # 存储上一次清理日期
         self.last_cleanup_date = None
         # 星座名映射
@@ -218,11 +209,15 @@ class sakuraTools(Plugin):
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         logger.info("[sakuraTools] 插件初始化完毕")
 
-    def get_reply(self, session: ZhipuAISession):
+    def get_reply(self, prompt):
         """
             定义一个用于获取 AI 回复的函数
         """
-        return self.ahi_pu_ai.reply_text(session)
+        # 创建字典
+        content_dict = []
+        context = Context(ContextType.TEXT, prompt, content_dict)
+        reply : Reply = Bridge().fetch_reply_content(prompt, context)
+        return reply.content
 
     def shuffle_tarot_cards(self):
         """
@@ -1500,13 +1495,11 @@ class sakuraTools(Plugin):
             if result:
                 # 生成占卜提示词
                 prompt = GenZhanBuCueWord(result, question)
-                # 获取会话
-                session = self.ahi_pu_ai.sessions.session_query(prompt, session_id)
                 try:
                     # 使用 ThreadPoolExecutor 来设置超时
                     with concurrent.futures.ThreadPoolExecutor() as executor:
-                        # 使用 lambda 函数延迟调用 get_reply 并传递 session 参数
-                        future = executor.submit(lambda: self.get_reply(session))
+                        # 使用 lambda 函数延迟调用 get_reply 并传递 prompt 参数
+                        future = executor.submit(self.get_reply, prompt)
                         # 设置超时时间为10秒
                         reply_content = future.result(timeout=10)
                 except concurrent.futures.TimeoutError:

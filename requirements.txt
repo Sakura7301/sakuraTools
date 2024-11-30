@@ -1,6 +1,5 @@
-Pillow  
-zhipuai
-requests  
-pytz  
-lunar-python  
+Pillow
+requests
+pytz
+lunar-python
 zhdate
