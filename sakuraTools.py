@@ -789,20 +789,14 @@ class sakuraTools(Plugin):
                 response = requests.get(url, headers=user_headers, params=user_params)
 
             # 打印请求信息
-            logger.debug("发送的HTTP请求:")
-            logger.debug("请求方法: GET")
-            logger.debug(f"请求URL: {response.url}")
-            logger.debug(f"请求头: {response.request.headers}")
-            logger.debug(f"请求体: {response.request.body}")
+            logger.debug(f"发送的HTTP请求:\nGET {response.url}\n{response.request.headers}\n{response.request.body}")
 
             # 检查响应状态码
             # 如果响应状态码不是200，将会抛出HTTPError异常
             response.raise_for_status()
 
             # 打印响应信息
-            logger.debug("收到的HTTP响应:")
-            logger.debug(f"响应状态码: {response.status_code}")
-            logger.debug(f"响应头: {response.headers}")
+            logger.debug(f"收到的HTTP响应:\n{json.dumps(response_data, ensure_ascii=False)}")
 
             # 解析响应体
             if "raw" == response_type:
