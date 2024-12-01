@@ -36,7 +36,8 @@ class sakuraTools(Plugin):
         self.DOG_URL = "https://api.vvhan.com/api/text/dog?type=json"
         self.JOKE_URL = "https://api.pearktrue.cn/api/jdyl/xiaohua.php"
         self.MOYU_URL = "https://api.vvhan.com/api/moyu?type=json"
-        self.ACG_URL = "https://xiaobapi.top/api/xb/api/pixiv.php"
+        self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
+        self.PIXIV_URL = "https://xiaobapi.top/api/xb/api/pixiv.php"
         self.YOUNG_GIRL_URL = "https://api.apiopen.top/api/getMiniVideo?page=0&size=1"
         self.BEAUTIFUL_URL = "https://api.kuleu.com/api/MP4_xiaojiejie?type=json"
         self.CONSTELLATION_URL = "https://api.vvhan.com/api/horoscope"
@@ -75,6 +76,8 @@ class sakuraTools(Plugin):
         self.moyu_keyword = self.config.get("moyu_keyword", [])
         # 加载二次元关键字
         self.acg_keyword = self.config.get("acg_keyword", [])
+        # 加载二次元关键字
+        self.pixiv_keyword = self.config.get("pixiv_keyword", [])
         # 加载小姐姐视频关键字
         self.young_girl_keyword = self.config.get("young_girl_keyword", [])
         # 加载美女视频关键字
@@ -969,10 +972,38 @@ class sakuraTools(Plugin):
             response_data = self.http_request_data(url)
 
             # 返回响应的数据内容
-            # 获取acg内容
-            acg_image_url = response_data['data'][0]['urls']['original']
-            logger.debug(f"get acg image url:{acg_image_url}")
-            return self.download_image(acg_image_url, "acg")
+            if response_data["success"]:
+                # 获取acg内容
+                acg_image_url = response_data['url']
+                logger.debug(f"get acg image url:{acg_image_url}")
+                return acg_image_url
+            else:
+                logger.error(f"错误信息: {response_data['message']}")
+                return None
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
+
+    def pixiv_check_keyword(self, content):
+        """
+            检查pixiv图片关键字
+        """
+        # 检查关键词
+        return any(keyword in content for keyword in self.pixiv_keyword)
+
+    def pixiv_request(self, url):
+        """
+            pixiv图片请求函数
+        """
+        try:
+            # http请求
+            response_data = self.http_request_data(url)
+
+            # 返回响应的数据内容
+            # 获取pixiv内容
+            pixiv_image_url = response_data['data'][0]['urls']['original']
+            logger.debug(f"get pixiv image url:{pixiv_image_url}")
+            return self.download_image(pixiv_image_url, "pixiv")
         except Exception as err:
             logger.error(f"其他错误: {err}")
             return None
@@ -1758,9 +1789,19 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 二次元")
             reply = Reply()
             # 获取二次元小姐姐
-            acg_image_io = self.acg_request(self.ACG_URL)
-            reply.type = ReplyType.IMAGE if acg_image_io else ReplyType.TEXT
-            reply.content = acg_image_io if acg_image_io else "获取二次元小姐姐失败啦，待会再来吧~🐾"
+            acg_image_url = self.acg_request(self.ACG_URL)
+            reply.type = ReplyType.IMAGE_URL if acg_image_url else ReplyType.TEXT
+            reply.content = acg_image_url if acg_image_url else "获取二次元小姐姐失败啦，待会再来吧~🐾"
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
+        elif self.pixiv_check_keyword(content):
+            logger.debug("[sakuraTools] pixiv")
+            reply = Reply()
+            # 获取pixiv图片
+            pixiv_image_io = self.pixiv_request(self.PIXIV_URL)
+            reply.type = ReplyType.IMAGE if pixiv_image_io else ReplyType.TEXT
+            reply.content = pixiv_image_io if pixiv_image_io else "获取pixiv图片失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
