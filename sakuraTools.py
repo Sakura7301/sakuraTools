@@ -25,7 +25,7 @@ from plugins.sakuraTools.meihuayishu import GenZhanBuCueWord
     desire_priority=99,  # 插件优先级
     hidden=False,  # 是否隐藏
     desc="有趣的小功能合集",  # 插件描述
-    version="1.0",  # 插件版本
+    version="1.0.2",  # 插件版本
     author="sakura7301",  # 作者
 )
 class sakuraTools(Plugin):
