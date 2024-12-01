@@ -118,6 +118,7 @@ SHI_CHEN = {
     12: '亥时'
 }
 
+
 def WuXingCalculator(shanggua_num, xiagua_num, ti_flag, month):
     """
     五行计算函数。
@@ -255,6 +256,7 @@ def WuXingCalculator(shanggua_num, xiagua_num, ti_flag, month):
         logger.error(f"[sakuraTools] 发生错误：{e}")
         return None
 
+
 def GetGuaShu(query):
     """
     提取用户输入中头部或尾部的三位数字和问题文本
@@ -320,7 +322,7 @@ def GetGuaShu(query):
     return number, question.strip(), gen_random_flag
 
 
-def FormatZhanBuReply(gen_random_num_str: str, question: str, number: str, result: dict, reply_content: dict) -> str:
+def FormatZhanBuReply(gen_random_num_str: str, question: str, number: str, result: dict, reply_content: str) -> str:
     """
     格式化占卜结果回复
     """
@@ -339,7 +341,7 @@ def FormatZhanBuReply(gen_random_num_str: str, question: str, number: str, resul
             raise ValueError(f"结果字典缺少必需的键: {missing_keys}")
 
         # 保持占卜结果模板
-        prompt = f"""{gen_random_num_str}占卜结果出来啦~😸🔮\n问题：{question}\n{result['shichen_info']}\n{result['gan_zhi_info']}\n{result['wang_shuai']}\n数字：{number}\n[主卦] {result['ben_gua']}({result['ben_gua_sheng_ke']})\n[互卦] {result['hu_gua']}\n[动爻] {result['dong_yao']}爻动\n[变卦] {result['bian_gua']}({result['bian_gua_sheng_ke']})\n解析：\n{reply_content['content']}\n(解读仅供参考哦，我们还是要活在当下嘛~🐾)"""
+        prompt = f"""{gen_random_num_str}占卜结果出来啦~😸🔮\n问题：{question}\n{result['shichen_info']}\n{result['gan_zhi_info']}\n{result['wang_shuai']}\n数字：{number}\n[主卦] {result['ben_gua']}({result['ben_gua_sheng_ke']})\n[互卦] {result['hu_gua']}\n[动爻] {result['dong_yao']}爻动\n[变卦] {result['bian_gua']}({result['bian_gua_sheng_ke']})\n解析：\n{reply_content}\n(解读仅供参考哦，我们还是要活在当下嘛~🐾)"""
 
         return prompt
 
@@ -391,6 +393,7 @@ def GenZhanBuCueWord(result: dict, question: str) -> str:
         logger.error(f"[sakuraTools] 生成占卜提示词时出错：{e}")
         raise
 
+
 # 修改时辰计算方式
 def get_shichen(hour):
     if hour == 23 or hour == 0:
@@ -420,6 +423,7 @@ def get_shichen(hour):
 
     return shichen
 
+
 def ChangeYao(bengua_lines, move_line):
     bian_gua_lines = bengua_lines.copy()
     index = move_line - 1
@@ -430,6 +434,7 @@ def ChangeYao(bengua_lines, move_line):
         bian_gua_lines[index] = 'yin'
 
     return bian_gua_lines
+
 
 def GanZhi():
     # 获取当前时间的干支
@@ -443,6 +448,7 @@ def GanZhi():
     hour_ganzhi = lunar.getTimeInGanZhi()  # 时辰干支
 
     return [year_ganzhi, month_ganzhi, day_ganzhi, hour_ganzhi]
+
 
 def GetNongLiMonth(input_str):
     logger.debug(type(input_str))
@@ -479,6 +485,7 @@ def GetNongLiMonth(input_str):
     # 返回对应的月份
     month = branch_to_month[earthly_branch]
     return  month
+
 
 def MeiHuaXinYi(value):
     """
@@ -599,13 +606,13 @@ def MeiHuaXinYi(value):
     # 构造结果字典
     result = {
         "shichen_info": datetime_str,
-        "gan_zhi_info":ganzhi_info,
+        "gan_zhi_info": ganzhi_info,
         "ben_gua": bengua_name,
         "wang_shuai": bengua_wuxing_result['wang_shuai'],
-        "ben_gua_sheng_ke":bengua_wuxing_result['sheng_ke'],
+        "ben_gua_sheng_ke": bengua_wuxing_result['sheng_ke'],
         "hu_gua": hugua_name,
         "bian_gua": bian_gua_name,
-        "bian_gua_sheng_ke":bian_gua_wuxing_result['sheng_ke'],
+        "bian_gua_sheng_ke": bian_gua_wuxing_result['sheng_ke'],
         "dong_yao": dong_yao_full
     }
     logger.info(f"[sakuraTools] 占卜结果：\n时间：{datetime_str}\n干支：{ganzhi_info}\n旺衰：{bengua_wuxing_result['wang_shuai']}\n本卦：{bengua_name}  {bengua_wuxing_result['sheng_ke']}\n互卦：{hugua_name}\n动爻：{dong_yao_full}\n变卦：{bian_gua_name}  {bian_gua_wuxing_result['sheng_ke']}\n")

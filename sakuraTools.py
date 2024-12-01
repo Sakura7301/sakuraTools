@@ -212,12 +212,14 @@ class sakuraTools(Plugin):
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         logger.info("[sakuraTools] 插件初始化完毕")
 
-    def get_reply(self, prompt):
+    def get_reply(self, session_id, prompt):
         """
             定义一个用于获取 AI 回复的函数
         """
         # 创建字典
-        content_dict = []
+        content_dict = {
+            "session_id": session_id,
+        }
         context = Context(ContextType.TEXT, prompt, content_dict)
         reply : Reply = Bridge().fetch_reply_content(prompt, context)
         return reply.content
@@ -796,7 +798,7 @@ class sakuraTools(Plugin):
             response.raise_for_status()
 
             # 打印响应信息
-            logger.debug(f"收到的HTTP响应:\n{json.dumps(response_data, ensure_ascii=False)}")
+            logger.debug(f"收到的HTTP响应:\n{response.status_code}\n{response.headers}")
 
             # 解析响应体
             if "raw" == response_type:
@@ -1524,7 +1526,7 @@ class sakuraTools(Plugin):
                     # 使用 ThreadPoolExecutor 来设置超时
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         # 使用 lambda 函数延迟调用 get_reply 并传递 prompt 参数
-                        future = executor.submit(self.get_reply, prompt)
+                        future = executor.submit(self.get_reply, session_id, prompt)
                         # 设置超时时间为10秒
                         reply_content = future.result(timeout=10)
                 except concurrent.futures.TimeoutError:
@@ -1976,19 +1978,17 @@ class sakuraTools(Plugin):
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
-        elif self.mei_hua_yi_shu:
-            # 梅花易数功能需要使用ai生成回复，因此目前只支持智谱AI
-            if self.mei_hua_yi_shu_check_keyword(content):
-                logger.debug("[sakuraTools] 梅花易数")
-                # 获取session_id
-                session_id = e_context["context"]["session_id"]
-                reply = Reply()
-                # 梅花易数
-                reply.type = ReplyType.TEXT
-                reply.content = self.mei_hua_yi_shu_request(session_id, content)
-                e_context['reply'] = reply
-                # 事件结束，并跳过处理context的默认逻辑
-                e_context.action = EventAction.BREAK_PASS
+        elif self.mei_hua_yi_shu_check_keyword(content):
+            logger.debug("[sakuraTools] 梅花易数")
+            # 获取session_id
+            session_id = e_context["context"]["session_id"]
+            reply = Reply()
+            # 梅花易数
+            reply.type = ReplyType.TEXT
+            reply.content = self.mei_hua_yi_shu_request(session_id, content)
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
 
     def get_help_text(self, **kwargs):
         """获取帮助文本"""
