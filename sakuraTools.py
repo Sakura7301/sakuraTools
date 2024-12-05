@@ -52,7 +52,6 @@ class sakuraTools(Plugin):
         self.AI_DRAW_URL = "https://api.pearktrue.cn/api/stablediffusion/"
         self.DRAW_CARD_URL = "https://www.hhlqilongzhu.cn/api/tu_tlp.php"
         self.FORTUNE_URL = "https://www.hhlqilongzhu.cn/api/tu_yunshi.php"
-        self.MEME_URL = "https://xiaobapi.top/api/xb/api/tp.php"
 
         # 初始化配置
         self.config = super().load_config()
@@ -1050,29 +1049,6 @@ class sakuraTools(Plugin):
             logger.error(f"其他错误: {err}")
             return None
 
-    def meme_check_keyword(self, content):
-        """
-            检查表情关键字
-        """
-        # 检查关键词
-        return any(keyword in content for keyword in self.meme_keyword)
-
-    def meme_request(self, url):
-        """
-            表情包请求函数
-        """
-        try:
-
-            # http请求
-            response_data = self.http_request_data(url, "raw")
-
-            # 获取表情包内容
-            logger.debug(f"get meme image")
-            return self.download_image(None, "meme", response_data)
-        except Exception as err:
-            logger.error(f"其他错误: {err}")
-            return None
-
     def young_girl_check_keyword(self, content):
         """
             检查小姐姐视频关键字
@@ -1965,16 +1941,6 @@ class sakuraTools(Plugin):
             fortune_image_io = self.fortune_request(self.FORTUNE_URL)
             reply.type = ReplyType.IMAGE if fortune_image_io else ReplyType.TEXT
             reply.content = fortune_image_io if fortune_image_io else "获取运势失败啦，待会再来吧~🐾"
-            e_context['reply'] = reply
-            # 事件结束，并跳过处理context的默认逻辑
-            e_context.action = EventAction.BREAK_PASS
-        elif self.meme_check_keyword(content):
-            logger.debug("[sakuraTools] 表情包")
-            reply = Reply()
-            # 获取表情包结果
-            meme_image_io = self.meme_request(self.MEME_URL)
-            reply.type = ReplyType.IMAGE if meme_image_io else ReplyType.TEXT
-            reply.content = meme_image_io if meme_image_io else "获取表情失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
