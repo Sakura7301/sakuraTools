@@ -32,14 +32,22 @@ class sakuraTools(Plugin):
     def __init__(self):
         # 调用父类的初始化
         super().__init__()
+        # 获取协议类型
+        self.channel_type = conf().get("channel_type")
         # 定义目标URL
         self.DOG_URL = "https://api.vvhan.com/api/text/dog?type=json"
         self.JOKE_URL = "https://api.pearktrue.cn/api/jdyl/xiaohua.php"
         self.MOYU_URL = "https://api.vvhan.com/api/moyu?type=json"
         self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
         self.PIXIV_URL = "https://xiaobapi.top/api/xb/api/pixiv.php"
-        self.YOUNG_GIRL_URL = "https://api.apiopen.top/api/getMiniVideo?page=0&size=1"
-        self.BEAUTIFUL_URL = "https://api.kuleu.com/api/MP4_xiaojiejie?type=json"
+        self.YOUNG_GIRL_URL = ["https://api.317ak.com/API/sp/hssp.php",
+                            "https://api.317ak.com/API/sp/xjxl.php",
+                            "https://api.317ak.com/API/sp/ldxl.php",
+                            "https://api.317ak.com/API/sp/zycx.php",
+                            "https://api.317ak.com/API/sp/slxl.php",
+                            "https://api.317ak.com/API/sp/ndxl.php"
+        ]
+        self.BEAUTIFUL_URL = "https://api.317ak.com/API/sp/hssp.php"
         self.CONSTELLATION_URL = "https://api.vvhan.com/api/horoscope"
         self.CONSTELLATION_URL_BACKUP = "https://xiaobapi.top/api/xb/api/xingzuo.php"
         self.CBL_URL = "https://api.vvhan.com/api/hotlist/chongBluo"
@@ -806,6 +814,8 @@ class sakuraTools(Plugin):
             elif "text" == response_type:
                 # 返回文本
                 response_data = response.text
+            elif "url" == response_type:
+                response_data = response.url
             else :
                 # 默认按json处理
                 response_data = response.json()
@@ -1062,35 +1072,14 @@ class sakuraTools(Plugin):
         """
         try:
             # http请求
-            response_data = self.http_request_data(url)
-
-            # 返回响应的数据内容
-            young_girl_video_url = self.get_first_video_url(response_data)
+            if self.channel_type == "gewechat":
+                headers = {"User-Agent": "Mozilla/5.0"}
+                young_girl_video_url = self.http_request_data(url, "url", headers)
+            else:
+                response_data = self.http_request_data(url)
+                young_girl_video_url = self.get_first_video_url(response_data)
             logger.debug(f"get young_girl video url:{young_girl_video_url}")
             return young_girl_video_url
-        except Exception as err:
-            logger.error(f"其他错误: {err}")
-            return None
-
-    def beautiful_check_keyword(self, content):
-        """
-            检查美女视频关键字
-        """
-        # 检查关键词
-        return any(keyword in content for keyword in self.beautiful_keyword)
-
-    def beautiful_request(self, url):
-        """
-            美女视频请求函数
-        """
-        try:
-            # http请求
-            response_data = self.http_request_data(url)
-
-            # 返回响应的数据内容
-            beautiful_video_url = response_data['mp4_video']
-            logger.debug(f"get beautiful video url:{beautiful_video_url}")
-            return beautiful_video_url
         except Exception as err:
             logger.error(f"其他错误: {err}")
             return None
@@ -1504,7 +1493,7 @@ class sakuraTools(Plugin):
                         # 使用 lambda 函数延迟调用 get_reply 并传递 prompt 参数
                         future = executor.submit(self.get_reply, session_id, prompt)
                         # 设置超时时间为10秒
-                        reply_content = future.result(timeout=10)
+                        reply_content = future.result(timeout=30)
                 except concurrent.futures.TimeoutError:
                     # 如果超时，返回超时提示
                     reply_content = "大模型超时啦~😕等一下再问叭~🐱"
@@ -1781,19 +1770,9 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 小姐姐")
             reply = Reply()
             # 获取小姐姐视频
-            young_girl_video_url = self.young_girl_request(self.YOUNG_GIRL_URL)
+            young_girl_video_url = self.young_girl_request(random.choice(self.YOUNG_GIRL_URL))
             reply.type = ReplyType.VIDEO_URL if young_girl_video_url else ReplyType.TEXT
             reply.content = young_girl_video_url if young_girl_video_url else "获取小姐姐视频失败啦，待会再来吧~🐾"
-            e_context['reply'] = reply
-            # 事件结束，并跳过处理context的默认逻辑
-            e_context.action = EventAction.BREAK_PASS
-        elif self.beautiful_check_keyword(content):
-            logger.debug("[sakuraTools] 美女")
-            reply = Reply()
-            # 获取美女视频
-            beautiful_video_url = self.beautiful_request(self.BEAUTIFUL_URL)
-            reply.type = ReplyType.VIDEO_URL if beautiful_video_url else ReplyType.TEXT
-            reply.content = beautiful_video_url if beautiful_video_url else "获取美女视频失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
@@ -1958,5 +1937,5 @@ class sakuraTools(Plugin):
 
     def get_help_text(self, **kwargs):
         """获取帮助文本"""
-        help_text = "\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [美女]：获取一条美女视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n -[黄历]：获取今日黄历\n- [抽牌]：抽取单张塔罗牌\n- [三牌阵]：抽取塔罗牌三牌阵\n- [十字牌阵]：抽取塔罗牌十字牌阵\n- [每日一卦]：获取随机卦图\n- [卦图+卦名]：获取对应卦图\n- [微博热搜]：获取微博热搜\n- [百度热搜]：获取百度热搜\n- [AI搜索]：输入 `搜索 + 关键词`可以获取整合信息\n- [AI画图]：输入`画一个 + 关键字`可以生成ai图片\n- [梅花易数] 输入`算算` + `你想问的问题` + `三位数字`即可获得占卜结果\n- [抽卡]：获取带有解释的塔罗牌。\n- [运势]：获取你的运势。\n"
+        help_text = "\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n -[黄历]：获取今日黄历\n- [抽牌]：抽取单张塔罗牌\n- [三牌阵]：抽取塔罗牌三牌阵\n- [十字牌阵]：抽取塔罗牌十字牌阵\n- [每日一卦]：获取随机卦图\n- [卦图+卦名]：获取对应卦图\n- [微博热搜]：获取微博热搜\n- [百度热搜]：获取百度热搜\n- [AI搜索]：输入 `搜索 + 关键词`可以获取整合信息\n- [AI画图]：输入`画一个 + 关键字`可以生成ai图片\n- [梅花易数] 输入`算算` + `你想问的问题` + `三位数字`即可获得占卜结果\n- [抽卡]：获取带有解释的塔罗牌。\n- [运势]：获取你的运势。\n"
         return help_text

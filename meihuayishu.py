@@ -385,7 +385,15 @@ def GenZhanBuCueWord(result: dict, question: str) -> str:
             raise ValueError(f"[sakuraTools] 结果字典缺少必需的键: {missing_keys}")
 
         # 保持原有格式的提示词模板
-        prompt = f"""问题：{question}。时间为：{result['gan_zhi_info']}，五行旺衰为：{result['wang_shuai']}。主卦为{result['ben_gua']}，{result['hu_gua']}，{result['dong_yao']}爻动，变卦为{result['bian_gua']}；卦象已经给出，按照《梅花易数》，结合上面提到的问题，对上述卦象进行断卦，然后给出150字以内的简要解析。"""
+        prompt = f"""问题：{question}。\n时间：{result['gan_zhi_info']}\n五行旺衰为：{result['wang_shuai']}\n本卦:{result['ben_gua']}({result['ben_gua_sheng_ke']})\n互卦:{result['hu_gua']}\n{result['dong_yao']}爻动\n变卦:{result['bian_gua']}({result['bian_gua_sheng_ke']})\n：
+------------------------分割线----------------------
+以上为排盘结果。请结合《梅花易数》的断卦方法，先根据卦象本身判断吉凶，再辅以“三要十应”取象（即通过捕捉文字中隐藏的声音、形象和内在理）来辅助断局。分析时注意：
+1. 旺相休囚死：当令者旺，令生者相，生令者休，克令者囚，令克者死。令就是这个月的地支，生克是指这个月的地支生克的五行。
+2. 梅花易数不参照易经对于64卦的解释，更注重卦本身的生克制化（参见《梅花易数》的体用之说：体卦为我，用卦为事，即根据本、互、变三个重卦本身的五行生克推测吉凶和事物的发展）。记住，万事万物皆是五行生克。
+3. “三要十应”作为辅助依据，勿逐项列举；
+4. 断局需结合卦和问题描述中涉及的天气、地理、人事、时令、方位、动静、方向、器物、声音及文字等信息，将提取到的信息结合八卦万物类象进行取象；
+5. 最终请结合你的推测、取象，给我你的预测结果，300字以内给。
+"""
 
         return prompt
 
