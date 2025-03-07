@@ -37,7 +37,7 @@ class sakuraTools(Plugin):
         # 定义目标URL
         self.DOG_URL = "https://api.vvhan.com/api/text/dog?type=json"
         self.JOKE_URL = "https://api.pearktrue.cn/api/jdyl/xiaohua.php"
-        self.MOYU_URL = "https://api.vvhan.com/api/moyu?type=json"
+        self.MOYU_URL = "https://dayu.qqsuu.cn/moyuribao/apis.php?type=json"
         self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
         self.PIXIV_URL = "https://xiaobapi.top/api/xb/api/pixiv.php"
         self.YOUNG_GIRL_URL = ["https://api.317ak.com/API/sp/hssp.php",
@@ -60,6 +60,7 @@ class sakuraTools(Plugin):
         self.AI_DRAW_URL = "https://api.pearktrue.cn/api/stablediffusion/"
         self.DRAW_CARD_URL = "https://www.hhlqilongzhu.cn/api/tu_tlp.php"
         self.FORTUNE_URL = "https://www.hhlqilongzhu.cn/api/tu_yunshi.php"
+        self.MOYU_VIDEO_URL = "https://dayu.qqsuu.cn/moyuribaoshipin/apis.php?type=json"
 
         # 初始化配置
         self.config = super().load_config()
@@ -87,6 +88,8 @@ class sakuraTools(Plugin):
         self.pixiv_keyword = self.config.get("pixiv_keyword", [])
         # 加载小姐姐视频关键字
         self.young_girl_keyword = self.config.get("young_girl_keyword", [])
+        # 加载小姐姐视频关键字
+        self.moyu_video_keyword = self.config.get("moyu_video_keyword", [])
         # 加载美女视频关键字
         self.beautiful_keyword = self.config.get("beautiful_keyword", [])
         # 加载虫部落热搜关键字
@@ -263,13 +266,13 @@ class sakuraTools(Plugin):
         return card_file.split('_', 1)[1].replace('.jpg', '')
 
     def tarot_single_card_check_keyword(self, query):
-        return any(keyword in query for keyword in self.tarot_single_keyword)
+        return query in self.tarot_single_keyword
 
     def tarot_three_cards_check_keyword(self, query):
-        return any(keyword in query for keyword in self.tarot_three_keyword)
+        return query in self.tarot_three_keyword
 
     def tarot_cross_cards_check_keyword(self, query):
-        return any(keyword in query for keyword in self.tarot_cross_keyword)
+        return query in  self.tarot_cross_keyword
 
     def tarot_get_single_card(self, num=None):
         """
@@ -873,7 +876,7 @@ class sakuraTools(Plugin):
             检查舔狗日记关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.dog_keyword)
+        return content in self.dog_keyword
 
     def dog_request(self, url):
         """
@@ -903,7 +906,7 @@ class sakuraTools(Plugin):
             检查笑话关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.joke_keyword)
+        return content in self.joke_keyword
 
     def joke_request(self, url):
         """
@@ -928,7 +931,7 @@ class sakuraTools(Plugin):
             检查摸鱼日历关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.moyu_keyword)
+        return content in self.moyu_keyword
 
     def moyu_request(self, url):
         """
@@ -947,16 +950,10 @@ class sakuraTools(Plugin):
                 # http请求
                 response_data = self.http_request_data(url)
 
-                # 返回响应的数据内容
-                if response_data["success"]:
-                    # 获取摸鱼日历
-                    mo_yu_url = response_data['url']
-                    logger.debug(f"get mo_yu image url:{mo_yu_url}")
-                    return self.download_image(mo_yu_url, "mo_yu")
-                else:
-                    err_str = f"错误信息: {response_data['message']}"
-                    logger.error(err_str)
-                    return err_str
+                # 获取摸鱼日历url
+                mo_yu_url = response_data.get("data")
+                logger.debug(f"get mo_yu image url:{mo_yu_url}")
+                return self.download_image(mo_yu_url, "mo_yu")
         except Exception as err:
             logger.error(f"其他错误: {err}")
             return None
@@ -966,7 +963,7 @@ class sakuraTools(Plugin):
             检查ACG图片关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.acg_keyword)
+        return content in self.acg_keyword
 
     def acg_request(self, url):
         """
@@ -994,7 +991,7 @@ class sakuraTools(Plugin):
             检查pixiv图片关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.pixiv_keyword)
+        return content in self.pixiv_keyword
 
     def pixiv_request(self, url):
         """
@@ -1018,7 +1015,7 @@ class sakuraTools(Plugin):
             检查抽卡关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.draw_card_keyword)
+        return content in self.draw_card_keyword
 
     def draw_card_request(self, url):
         """
@@ -1041,7 +1038,7 @@ class sakuraTools(Plugin):
             检查运势关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.fortune_keyword)
+        return content in self.fortune_keyword
 
     def fortune_request(self, url):
         """
@@ -1064,7 +1061,7 @@ class sakuraTools(Plugin):
             检查小姐姐视频关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.young_girl_keyword)
+        return content in self.young_girl_keyword
 
     def young_girl_request(self, url):
         """
@@ -1079,6 +1076,27 @@ class sakuraTools(Plugin):
                 response_data = self.http_request_data(url)
                 young_girl_video_url = self.get_first_video_url(response_data)
             logger.debug(f"get young_girl video url:{young_girl_video_url}")
+            return young_girl_video_url
+        except Exception as err:
+            logger.error(f"其他错误: {err}")
+            return None
+
+    def moyu_video_check_keyword(self, content):
+        """
+            检查摸鱼视频关键字
+        """
+        # 检查关键词
+        return content in self.moyu_video_keyword
+
+    def moyu_video_request(self, url):
+        """
+            摸鱼视频请求函数
+        """
+        try:
+            # http请求
+            response_data = self.http_request_data(url)
+            young_girl_video_url = response_data.get("data")
+            logger.debug(f"get moyu video url:{young_girl_video_url}")
             return young_girl_video_url
         except Exception as err:
             logger.error(f"其他错误: {err}")
@@ -1141,7 +1159,7 @@ class sakuraTools(Plugin):
             检查虫部落热搜关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.chongbuluo_keyword)
+        return content in self.chongbuluo_keyword
 
     def chongbuluo_request(self, url):
         """
@@ -1171,7 +1189,7 @@ class sakuraTools(Plugin):
             检查疯狂星期四文案关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.kfc_keyword)
+        return content in self.kfc_keyword
 
     def extract_sentences(self, text, max_length=128):
         # 按照句号分割文本，获取前面的句子
@@ -1248,7 +1266,7 @@ class sakuraTools(Plugin):
             检查网抑云评论关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.wyy_keyword)
+        return content in self.wyy_keyword
 
     def wyy_request(self, url):
         """
@@ -1273,7 +1291,7 @@ class sakuraTools(Plugin):
             检查早报关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.newspaper_keyword)
+        return content in self.newspaper_keyword
 
     def newspaper_request(self, url):
         """
@@ -1305,7 +1323,7 @@ class sakuraTools(Plugin):
             检查画图关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.ai_draw_keyword)
+        return content in self.ai_draw_keyword
 
     def ai_draw_request(self, url, content):
         """
@@ -1386,7 +1404,7 @@ class sakuraTools(Plugin):
             检查黄历关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.huang_li_keyword)
+        return content in self.huang_li_keyword
 
     def huang_li_request(self, url):
         """
@@ -1428,7 +1446,7 @@ class sakuraTools(Plugin):
             检查AI搜索关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.ai_find_keyword)
+        return content in self.ai_find_keyword
 
     def ai_find_request(self, url, content):
         """
@@ -1511,11 +1529,11 @@ class sakuraTools(Plugin):
 
     def zwlq_chou_qian_check_keyword(self, query):
         # 定义抽签关键词列表
-        return any(keyword in query for keyword in self.zwlq_chou_qian_keyword)
+        return query in self.zwlq_chou_qian_keyword
 
     def zwlq_jie_qian_check_keyword(self, query):
         # 定义解签关键词列表
-        return any(keyword in query for keyword in self.zwlq_jie_qian_keyword)
+        return query in self.zwlq_jie_qian_keyword
 
     def zwlq_chou_qian_request(self):
         """
@@ -1545,13 +1563,13 @@ class sakuraTools(Plugin):
         """
             检查卦图关键词
         """
-        return any(keyword in query for keyword in self.dytj_gua_tu_keyword)
+        return query in self.dytj_gua_tu_keyword
 
     def dytj_daily_gua_tu_check_keyword(self, query):
         """
             检查每日一卦关键字
         """
-        return any(keyword in query for keyword in self.dytj_daily_gua_tu_keyword)
+        return query in self.dytj_daily_gua_tu_keyword
 
     def dytj_gua_tu_request(self, input_text):
         """
@@ -1645,21 +1663,21 @@ class sakuraTools(Plugin):
             检查热搜关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.hot_search_keyword)
+        return content in self.hot_search_keyword
 
     def hot_search_baidu_check_keyword(self, content):
         """
             检查百度热搜关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.hot_search_baidu_keyword)
+        return content in self.hot_search_baidu_keyword
 
     def hot_search_weibo_check_keyword(self, content):
         """
             检查微博热搜关键字
         """
         # 检查关键词
-        return any(keyword in content for keyword in self.hot_search_weibo_keyword)
+        return content in self.hot_search_weibo_keyword
 
     def hot_search_request(self, context):
         """
@@ -1773,6 +1791,16 @@ class sakuraTools(Plugin):
             young_girl_video_url = self.young_girl_request(random.choice(self.YOUNG_GIRL_URL))
             reply.type = ReplyType.VIDEO_URL if young_girl_video_url else ReplyType.TEXT
             reply.content = young_girl_video_url if young_girl_video_url else "获取小姐姐视频失败啦，待会再来吧~🐾"
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
+        elif self.moyu_video_check_keyword(content):
+            logger.debug("[sakuraTools] 摸鱼视频")
+            reply = Reply()
+            # 获取摸鱼视频
+            moyu_video_url = self.moyu_video_request(self.MOYU_VIDEO_URL)
+            reply.type = ReplyType.VIDEO_URL if moyu_video_url else ReplyType.TEXT
+            reply.content = moyu_video_url if moyu_video_url else "获取摸鱼视频失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
