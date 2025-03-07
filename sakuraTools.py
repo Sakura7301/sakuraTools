@@ -943,7 +943,7 @@ class sakuraTools(Plugin):
                 return moyu_image_io
             else:
                 #本地不存在，从网络获取
-                logger.info("[sakuraTools] 本地不存在摸鱼日历，从网络获取")
+                logger.debug("[sakuraTools] 本地不存在摸鱼日历，从网络获取")
                 # http请求
                 response_data = self.http_request_data(url)
 
