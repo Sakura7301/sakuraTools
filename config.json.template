@@ -1,11 +1,11 @@
 {
-    "dog_diary_keyword": ["舔狗日记","舔狗日常"],
+    "dog_diary_keyword": ["舔狗日记"],
     "joke_keyword": ["笑话","讲个笑话","来个笑话","来点笑话"],
     "moyu_keyword": ["摸鱼","摸鱼日历"],
     "acg_keyword": ["二次元老婆","ACG美图","acg美图","纸片人老婆","动漫图"],
     "pixiv_keyword": ["pixiv"],
-    "young_girl_keyword": ["小姐姐"],
-    "beautiful_keyword": ["美女"],
+    "young_girl_keyword": ["小姐姐", "美女"],
+    "moyu_video_keyword": ["摸鱼视频"],
     "chongbuluo_keyword": ["虫部落热搜"],
     "kfc_keyword":["肯德基","kfc","KFC","疯狂星期四"],
     "wyy_keyword":["网抑云", "wyy"],
@@ -25,5 +25,6 @@
     "hot_search_weibo_keyword":["微博热搜"],
     "ai_find_keyword":["搜索", "搜一下", "查一下", "AI搜索", "ai搜索"],
     "ai_draw_keyword":["画一个","画个", "画一下", "画一张", "画一张", "画一幅", "画一只", "画一头"],
-    "mei_hua_yi_shu_keyword":["算算", "算一算","算一卦","卜卦","算一下","来一卦", "开一卦"]
+    "mei_hua_yi_shu_keyword":["算算", "算一算","算一卦","卜卦","算一下","来一卦", "开一卦"],
+    "ip_query_keyword": ["IP查询", "ip查询", "查询IP", "查询ip"]
 }

@@ -39,13 +39,25 @@ class sakuraTools(Plugin):
         self.JOKE_URL = "https://api.pearktrue.cn/api/jdyl/xiaohua.php"
         self.MOYU_URL = "https://dayu.qqsuu.cn/moyuribao/apis.php?type=json"
         self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
-        self.PIXIV_URL = "https://xiaobapi.top/api/xb/api/pixiv.php"
+        self.PIXIV_URL = "http://xiaobapi.top/api/xb/api/pixiv.php"
         self.YOUNG_GIRL_URL = ["https://api.317ak.com/API/sp/hssp.php",
-                            "https://api.317ak.com/API/sp/xjxl.php",
                             "https://api.317ak.com/API/sp/ldxl.php",
-                            "https://api.317ak.com/API/sp/zycx.php",
-                            "https://api.317ak.com/API/sp/slxl.php",
-                            "https://api.317ak.com/API/sp/ndxl.php"
+                            "https://api.317ak.com/API/sp/ndxl.php",
+                            "https://api.magisk.icu/API/videos.php",
+                            "https://api.yuafeng.cn/API/ly/sjxl.php",
+                            "https://api.bska.top/api/sktj.php?type=video",
+                            "http://api.qemao.com/api/douyin/",
+                            "https://jx.iqfk.top/api/sjsp.php",
+                            "https://api.dwo.cc/api/ksvideo",
+                            "www.wudada.online/Api/NewSp"
+                            # "https://api.magisk.icu/API/cat.php",
+                            # "https://api.317ak.com/API/sp/slxl.php",
+                            # "https://www.hhlqilongzhu.cn/api/MP4_xiaojiejie.php",
+                            # "https://api.pearktrue.cn/api/random/xjj/?type=raw",
+                            # "https://api.lolimi.cn/API/xjj/xjj.php",
+                            # "https://api.yuafeng.cn/API/ly/cqng.php",
+                            # "https://api.yuafeng.cn/API/ly/mhy.php",
+                            # "https://tucdn.wpon.cn/api-girl/index.php",
         ]
         self.BEAUTIFUL_URL = "https://api.317ak.com/API/sp/hssp.php"
         self.CONSTELLATION_URL = "https://api.vvhan.com/api/horoscope"
@@ -61,6 +73,7 @@ class sakuraTools(Plugin):
         self.DRAW_CARD_URL = "https://www.hhlqilongzhu.cn/api/tu_tlp.php"
         self.FORTUNE_URL = "https://www.hhlqilongzhu.cn/api/tu_yunshi.php"
         self.MOYU_VIDEO_URL = "https://dayu.qqsuu.cn/moyuribaoshipin/apis.php?type=json"
+        self.IP_QUERY_URL = "https://api.52vmy.cn/api/query/itad"
 
         # 初始化配置
         self.config = super().load_config()
@@ -134,6 +147,8 @@ class sakuraTools(Plugin):
         self.mei_hua_yi_shu = self.config.get("mei_hua_yi_shu")
         # 加载梅花易数关键字
         self.mei_hua_yi_shu_keyword = self.config.get("mei_hua_yi_shu_keyword", [])
+        # 加载IP查询关键字
+        self.ip_query_keyword = self.config.get("ip_query_keyword", [])
         # 存储上一次清理日期
         self.last_cleanup_date = None
         # 星座名映射
@@ -891,7 +906,7 @@ class sakuraTools(Plugin):
                 # 获取舔狗日记内容
                 dog_str = response_data['data']['content']
                 logger.debug(f"get dog diary:{dog_str}")
-                return dog_str
+                return f"🐶{dog_str}"
             else:
                 err_str = f"错误信息: {response_data['message']}"
                 logger.error(err_str)
@@ -1286,6 +1301,44 @@ class sakuraTools(Plugin):
             err_str = f"其他错误: {err}"
             logger.error(err_str)
             return err_str
+
+    def ip_query_check_keyword(self, content):
+        """
+            检查IP查询关键字
+        """
+        # 检查关键词
+        return content.split(" ", 1)[0] in self.ip_query_keyword
+
+    def ip_query_request(self, url, content):
+        """
+            IP查询请求函数
+        """
+        try:
+            # 获取空格后的内容  
+            target_content = content.split(" ", 1)[-1]  
+
+            # 检查是否是合法的IP地址  
+            ip_pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"  
+            if not re.match(ip_pattern, target_content): 
+                return  f"[{target_content}] 不是一个合法的IP地址。😹"
+
+            params = {
+                "ip": ip_pattern
+            }
+            
+            # http请求
+            response_data = self.http_request_data(url, None, None, params)
+
+            # 格式化请求结果
+            formatted_str = f"🌐 IP地址: {response_data['data']['ip']}\n📍 位置: {response_data['data']['address']}\n🌍 国家: {response_data['data']['home']}"  
+
+            logger.debug(f"get ip_query text:{formatted_str}")
+            return formatted_str
+        except Exception as err:
+            err_str = f"其他错误: {err}"
+            logger.error(err_str)
+            return err_str
+
     def newspaper_check_keyword(self, content):
         """
             检查早报关键字
@@ -1841,6 +1894,15 @@ class sakuraTools(Plugin):
             # 获取网抑云评论
             reply.type = ReplyType.TEXT
             reply.content = self.wyy_request(self.WYY_URL)
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
+        elif self.ip_query_check_keyword(content):
+            logger.debug("[sakuraTools] IP查询")
+            reply = Reply()
+            # 获取ip查询结果
+            reply.type = ReplyType.TEXT
+            reply.content = self.ip_query_request(self.IP_QUERY_URL, content)
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
