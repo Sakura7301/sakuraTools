@@ -49,7 +49,8 @@ class sakuraTools(Plugin):
                             "http://api.qemao.com/api/douyin/",
                             "https://jx.iqfk.top/api/sjsp.php",
                             "https://api.dwo.cc/api/ksvideo",
-                            "www.wudada.online/Api/NewSp"
+                            "https://www.wudada.online/Api/NewSp",
+                            "https://api.317ak.com/API/sp/hssp.php"
                             # "https://api.magisk.icu/API/cat.php",
                             # "https://api.317ak.com/API/sp/slxl.php",
                             # "https://www.hhlqilongzhu.cn/api/MP4_xiaojiejie.php",
@@ -59,7 +60,6 @@ class sakuraTools(Plugin):
                             # "https://api.yuafeng.cn/API/ly/mhy.php",
                             # "https://tucdn.wpon.cn/api-girl/index.php",
         ]
-        self.BEAUTIFUL_URL = "https://api.317ak.com/API/sp/hssp.php"
         self.CONSTELLATION_URL = "https://api.vvhan.com/api/horoscope"
         self.CONSTELLATION_URL_BACKUP = "https://xiaobapi.top/api/xb/api/xingzuo.php"
         self.CBL_URL = "https://api.vvhan.com/api/hotlist/chongBluo"
@@ -101,10 +101,8 @@ class sakuraTools(Plugin):
         self.pixiv_keyword = self.config.get("pixiv_keyword", [])
         # 加载小姐姐视频关键字
         self.young_girl_keyword = self.config.get("young_girl_keyword", [])
-        # 加载小姐姐视频关键字
+        # 加载摸鱼视频关键字
         self.moyu_video_keyword = self.config.get("moyu_video_keyword", [])
-        # 加载美女视频关键字
-        self.beautiful_keyword = self.config.get("beautiful_keyword", [])
         # 加载虫部落热搜关键字
         self.chongbuluo_keyword = self.config.get("chongbuluo_keyword", [])
         # 加载疯狂星期四关键字
