@@ -40,17 +40,20 @@ class sakuraTools(Plugin):
         self.MOYU_URL = "https://dayu.qqsuu.cn/moyuribao/apis.php?type=json"
         self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
         self.PIXIV_URL = "http://xiaobapi.top/api/xb/api/pixiv.php"
-        self.YOUNG_GIRL_URL = ["https://api.317ak.com/API/sp/hssp.php",
+        self.YOUNG_GIRL_URL = [
+                            # "https://api.317ak.com/API/sp/hssp.php",
                             "https://api.317ak.com/API/sp/ldxl.php",
                             "https://api.317ak.com/API/sp/ndxl.php",
-                            "https://api.magisk.icu/API/videos.php",
+                            # "https://api.magisk.icu/API/videos.php",
                             "https://api.yuafeng.cn/API/ly/sjxl.php",
-                            "https://api.bska.top/api/sktj.php?type=video",
+                            "http://api.bska.top/api/sktj.php?type=video",
                             "http://api.qemao.com/api/douyin/",
-                            "https://jx.iqfk.top/api/sjsp.php",
-                            "https://api.dwo.cc/api/ksvideo",
-                            "https://www.wudada.online/Api/NewSp",
-                            "https://api.317ak.com/API/sp/hssp.php"
+                            # "https://jkapi.com/api/xjj_video?type=json&apiKey=6292b3ccc4fb685169e5d4fcd9b9d0e7&type=raw",
+                            # "https://api.cenguigui.cn/api/mp4/MP4_xiaojiejie.php?type=mp4",
+                            # "https://jx.iqfk.top/api/sjsp.php",
+                            # "https://api.dwo.cc/api/ksvideo",
+                            # "https://www.wudada.online/Api/NewSp",
+                            # "https://api.317ak.com/API/sp/hssp.php"
                             # "https://api.magisk.icu/API/cat.php",
                             # "https://api.317ak.com/API/sp/slxl.php",
                             # "https://www.hhlqilongzhu.cn/api/MP4_xiaojiejie.php",
