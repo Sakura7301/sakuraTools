@@ -1564,12 +1564,12 @@ class sakuraTools(Plugin):
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         # 使用 lambda 函数延迟调用 get_reply 并传递 prompt 参数
                         future = executor.submit(self.get_reply, session_id, prompt)
-                        # 设置超时时间为10秒
-                        reply_content = future.result(timeout=30)
+                        # 设置超时时间为60秒
+                        reply_content = future.result(timeout=60)
                 except concurrent.futures.TimeoutError:
                     # 如果超时，返回超时提示
                     reply_content = "大模型超时啦~😕等一下再问叭~🐱"
-                    logger.warning("[sakuraTools] [ZHIPU_AI] session_id={}, reply_content={}, 处理超时".format(session_id, reply_content))
+                    logger.warning("[sakuraTools] [AI] session_id={}, reply_content={}, 处理超时".format(session_id, reply_content))
                 # 按照指定格式回复用户
                 return FormatZhanBuReply(gen_random_num_str, question, number, result, reply_content)
             else:
@@ -1810,6 +1810,10 @@ class sakuraTools(Plugin):
             e_context.action = EventAction.BREAK_PASS
         elif self.moyu_check_keyword(content):
             logger.debug("[sakuraTools] 摸鱼日历")
+            context = e_context["context"]
+            reply = Reply(ReplyType.TEXT, "🐟正在为您获取摸鱼日历，请稍候...")
+            channel = e_context["channel"]
+            channel.send(reply, context)
             reply = Reply()
             # 获取摸鱼日历
             moyu_image_io = self.moyu_request(self.MOYU_URL)
@@ -1820,6 +1824,10 @@ class sakuraTools(Plugin):
             e_context.action = EventAction.BREAK_PASS
         elif self.acg_check_keyword(content):
             logger.debug("[sakuraTools] 二次元")
+            context = e_context["context"]
+            reply = Reply(ReplyType.TEXT, "🎨正在为您获取二次元小姐姐，请稍候...")
+            channel = e_context["channel"]
+            channel.send(reply, context)
             reply = Reply()
             # 获取二次元小姐姐
             acg_image_url = self.acg_request(self.ACG_URL)
@@ -1840,6 +1848,10 @@ class sakuraTools(Plugin):
             e_context.action = EventAction.BREAK_PASS
         elif self.young_girl_check_keyword(content):
             logger.debug("[sakuraTools] 小姐姐")
+            context = e_context["context"]
+            reply = Reply(ReplyType.TEXT, "🎞️正在为您获取小姐姐视频，请稍候...")
+            channel = e_context["channel"]
+            channel.send(reply, context)
             reply = Reply()
             # 获取小姐姐视频
             young_girl_video_url = self.young_girl_request(random.choice(self.YOUNG_GIRL_URL))
@@ -1850,6 +1862,10 @@ class sakuraTools(Plugin):
             e_context.action = EventAction.BREAK_PASS
         elif self.moyu_video_check_keyword(content):
             logger.debug("[sakuraTools] 摸鱼视频")
+            context = e_context["context"]
+            reply = Reply(ReplyType.TEXT, "🐟正在为您获取摸鱼视频，请稍候...")
+            channel = e_context["channel"]
+            channel.send(reply, context)
             reply = Reply()
             # 获取摸鱼视频
             moyu_video_url = self.moyu_video_request(self.MOYU_VIDEO_URL)
@@ -1909,6 +1925,10 @@ class sakuraTools(Plugin):
             e_context.action = EventAction.BREAK_PASS
         elif self.newspaper_check_keyword(content):
             logger.debug("[sakuraTools] 60s早报")
+            context = e_context["context"]
+            reply = Reply(ReplyType.TEXT, "📰正在为您获取早报中，请稍候...")
+            channel = e_context["channel"]
+            channel.send(reply, context)
             reply = Reply()
             # 获取早报
             newspaper_image_io = self.newspaper_request(self.NEWSPAPER_URL)
@@ -2016,6 +2036,10 @@ class sakuraTools(Plugin):
             e_context.action = EventAction.BREAK_PASS
         elif self.mei_hua_yi_shu_check_keyword(content):
             logger.debug("[sakuraTools] 梅花易数")
+            context = e_context["context"]
+            reply = Reply(ReplyType.TEXT, "🔮正在为您占卜中，请稍候...")
+            channel = e_context["channel"]
+            channel.send(reply, context)
             # 获取session_id
             session_id = e_context["context"]["session_id"]
             reply = Reply()
