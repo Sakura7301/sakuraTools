@@ -41,27 +41,8 @@ class sakuraTools(Plugin):
         self.ACG_URL = "https://api.vvhan.com/api/wallpaper/acg?type=json"
         self.PIXIV_URL = "http://xiaobapi.top/api/xb/api/pixiv.php"
         self.YOUNG_GIRL_URL = [
-                            # "https://api.317ak.com/API/sp/hssp.php",
-                            "https://api.317ak.com/API/sp/ldxl.php",
-                            "https://api.317ak.com/API/sp/ndxl.php",
-                            # "https://api.magisk.icu/API/videos.php",
                             "https://api.yuafeng.cn/API/ly/sjxl.php",
-                            "http://api.bska.top/api/sktj.php?type=video",
                             "http://api.qemao.com/api/douyin/",
-                            # "https://jkapi.com/api/xjj_video?type=json&apiKey=6292b3ccc4fb685169e5d4fcd9b9d0e7&type=raw",
-                            # "https://api.cenguigui.cn/api/mp4/MP4_xiaojiejie.php?type=mp4",
-                            # "https://jx.iqfk.top/api/sjsp.php",
-                            # "https://api.dwo.cc/api/ksvideo",
-                            # "https://www.wudada.online/Api/NewSp",
-                            # "https://api.317ak.com/API/sp/hssp.php"
-                            # "https://api.magisk.icu/API/cat.php",
-                            # "https://api.317ak.com/API/sp/slxl.php",
-                            # "https://www.hhlqilongzhu.cn/api/MP4_xiaojiejie.php",
-                            # "https://api.pearktrue.cn/api/random/xjj/?type=raw",
-                            # "https://api.lolimi.cn/API/xjj/xjj.php",
-                            # "https://api.yuafeng.cn/API/ly/cqng.php",
-                            # "https://api.yuafeng.cn/API/ly/mhy.php",
-                            # "https://tucdn.wpon.cn/api-girl/index.php",
         ]
         self.CONSTELLATION_URL = "https://api.vvhan.com/api/horoscope"
         self.CONSTELLATION_URL_BACKUP = "https://xiaobapi.top/api/xb/api/xingzuo.php"
@@ -75,7 +56,6 @@ class sakuraTools(Plugin):
         self.AI_DRAW_URL = "https://api.pearktrue.cn/api/stablediffusion/"
         self.DRAW_CARD_URL = "https://www.hhlqilongzhu.cn/api/tu_tlp.php"
         self.FORTUNE_URL = "https://www.hhlqilongzhu.cn/api/tu_yunshi.php"
-        self.MOYU_VIDEO_URL = "https://dayu.qqsuu.cn/moyuribaoshipin/apis.php?type=json"
         self.IP_QUERY_URL = "https://api.52vmy.cn/api/query/itad"
 
         # 初始化配置
@@ -104,8 +84,6 @@ class sakuraTools(Plugin):
         self.pixiv_keyword = self.config.get("pixiv_keyword", [])
         # 加载小姐姐视频关键字
         self.young_girl_keyword = self.config.get("young_girl_keyword", [])
-        # 加载摸鱼视频关键字
-        self.moyu_video_keyword = self.config.get("moyu_video_keyword", [])
         # 加载虫部落热搜关键字
         self.chongbuluo_keyword = self.config.get("chongbuluo_keyword", [])
         # 加载疯狂星期四关键字
@@ -237,6 +215,17 @@ class sakuraTools(Plugin):
         # 注册处理上下文的事件
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         logger.info("[sakuraTools] 插件初始化完毕")
+
+    def _load_config_template(self):
+        logger.debug("[sakuraTools] No sakuraTools plugin config.json, use plugins/sakuraTools/config.json.template")
+        try:
+            plugin_config_path = os.path.join(self.path, "config.json.template")
+            if os.path.exists(plugin_config_path):
+                with open(plugin_config_path, "r", encoding="utf-8") as f:
+                    plugin_conf = json.load(f)
+                    return plugin_conf
+        except Exception as e:
+            logger.exception(e)
 
     def get_reply(self, session_id, prompt):
         """
@@ -805,64 +794,130 @@ class sakuraTools(Plugin):
             return None
 
     # http通用请求接口
-    def http_request_data(self, url, response_type=None, user_headers=None, user_params=None, verify_flag=None):
+    def http_request_data(self, url, response_type=None, user_headers=None, user_params=None, verify_flag=False):
         """
             通用的HTTP请求函数
+            
+            参数:
+                url: 请求URL
+                response_type: 响应类型 "raw"(二进制) | "text"(文本) | "url"(返回URL) | "json"(JSON) | None(自动检测)
+                user_headers: 自定义请求头
+                user_params: 请求参数
+                verify_flag: 是否验证SSL证书（已废弃，统一为False）
         """
         try:
-            # 发起GET请求
-            if verify_flag:
-                response = requests.get(url, headers=user_headers, params=user_params, verify=False)
-            else:
-                response = requests.get(url, headers=user_headers, params=user_params)
+            # 禁用SSL警告
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            
+            # 发起GET请求（verify_flag参数已无意义，统一为False）
+            response = requests.get(url, headers=user_headers, params=user_params, verify=False, timeout=15)
 
             # 打印请求信息
             logger.debug(f"发送的HTTP请求:\nGET {response.url}\n{response.request.headers}\n{response.request.body}")
 
             # 检查响应状态码
-            # 如果响应状态码不是200，将会抛出HTTPError异常
             response.raise_for_status()
 
+            # 获取Content-Type
+            content_type = response.headers.get('Content-Type', '').lower()
+            
             # 打印响应信息
-            logger.debug(f"收到的HTTP响应:\n{response.status_code}\n{response.headers}")
+            logger.debug(f"收到的HTTP响应:\n消息类型：{response_type}\nContent-Type: {content_type}\n状态码: {response.status_code}")
 
             # 解析响应体
-            if "raw" == response_type:
+            if response_type == "raw":
                 # 直接返回二进制流
                 response_data = response.content
-            elif "text" == response_type:
+                
+            elif response_type == "text":
                 # 返回文本
                 response_data = response.text
-            elif "url" == response_type:
+                
+            elif response_type == "url":
+                # 返回请求的URL
                 response_data = response.url
-            else :
-                # 默认按json处理
+                
+            elif response_type == "json":
+                # 强制按JSON解析
+                response_data = response.json()
+                
+            elif response_type is None:
+                # 自动检测（新增逻辑）
+                if 'application/json' in content_type:
+                    # JSON响应
+                    response_data = response.json()
+                    
+                elif any(t in content_type for t in ['video', 'image', 'audio', 'application/octet-stream']):
+                    # 媒体文件，返回URL而不是下载内容
+                    logger.info(f"检测到媒体文件 ({content_type})，返回URL")
+                    response_data = response.url
+                    
+                elif 'text' in content_type or 'html' in content_type:
+                    # 文本或HTML
+                    response_data = response.text
+                    
+                else:
+                    # 未知类型，尝试JSON，失败则返回文本
+                    try:
+                        response_data = response.json()
+                    except ValueError:
+                        logger.warning(f"无法解析为JSON，返回URL")
+                        response_data = response.url
+            else:
+                # 未知的response_type，默认尝试JSON
                 response_data = response.json()
 
             return response_data
+            
         except requests.exceptions.HTTPError as http_err:
             err_str = f"HTTP错误: {http_err}"
             logger.error(err_str)
-            return err_str
+            return None  # 建议返回None而不是错误字符串，便于调用方判断
+            
         except ValueError as json_err:
             err_str = f"JSON解析错误: {json_err}"
             logger.error(err_str)
-            return err_str
+            logger.info(f"JSON解析失败，尝试返回URL: {url}")
+            return url  # 降级策略：返回原URL
+            
         except Exception as err:
             err_str = f"其他错误: {err}"
             logger.error(err_str)
-            return err_str
+            return None
 
     def get_first_video_url(self, response):
         """
             从响应数据中提取第一个视频的 URL
+            支持多种数据格式
         """
-        # 确保 response 有效并包含结果
-        if response and 'result' in response and 'list' in response['result'] and len(response['result']['list']) > 0:
-            # 返回第一个视频的 URL
-            return response['result']['list'][0]['playurl']
-        else:
-            # 如果没有找到视频，返回 None
+        try:
+            # 情况1：已经是URL字符串
+            if isinstance(response, str):
+                if response.startswith('http'):
+                    return response
+                return None
+            
+            # 情况2：标准的 result.list 结构
+            if isinstance(response, dict):
+                # 检查完整路径: response['result']['list'][0]['playurl']
+                if 'result' in response and isinstance(response['result'], dict):
+                    if 'list' in response['result'] and isinstance(response['result']['list'], list):
+                        if len(response['result']['list']) > 0:
+                            video_item = response['result']['list'][0]
+                            if isinstance(video_item, dict) and 'playurl' in video_item:
+                                return video_item['playurl']
+                
+                # 尝试其他常见字段
+                for key in ['url', 'video_url', 'videoUrl', 'playUrl', 'play_url', 'data']:
+                    if key in response and response[key]:
+                        return response[key]
+            
+            logger.warning(f"无法从响应中提取视频URL，响应类型: {type(response)}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"提取视频URL时出错: {e}")
             return None
 
     def chongbuluo_five_posts(self, response):
@@ -1087,35 +1142,33 @@ class sakuraTools(Plugin):
             # http请求
             if self.channel_type == "gewechat":
                 headers = {"User-Agent": "Mozilla/5.0"}
-                young_girl_video_url = self.http_request_data(url, "url", headers)
+                young_girl_video_url = self.http_request_data(url, "url", headers, None, False)
             else:
                 response_data = self.http_request_data(url)
-                young_girl_video_url = self.get_first_video_url(response_data)
+                
+                # ✅ 判断返回类型
+                if isinstance(response_data, str):
+                    # 如果是字符串且是URL，直接使用
+                    if response_data.startswith('http'):
+                        young_girl_video_url = response_data
+                        logger.info(f"✅ 直接获取到视频URL: {young_girl_video_url}")
+                    else:
+                        young_girl_video_url = None
+                elif isinstance(response_data, dict):
+                    # 如果是字典（JSON），从中提取
+                    young_girl_video_url = self.get_first_video_url(response_data)
+                    logger.info(f"✅ 从JSON提取视频URL: {young_girl_video_url}")
+                else:
+                    young_girl_video_url = None
+                    logger.warning(f"⚠️ 未知的响应类型: {type(response_data)}")
+                
             logger.debug(f"get young_girl video url:{young_girl_video_url}")
             return young_girl_video_url
+            
         except Exception as err:
-            logger.error(f"其他错误: {err}")
-            return None
-
-    def moyu_video_check_keyword(self, content):
-        """
-            检查摸鱼视频关键字
-        """
-        # 检查关键词
-        return content in self.moyu_video_keyword
-
-    def moyu_video_request(self, url):
-        """
-            摸鱼视频请求函数
-        """
-        try:
-            # http请求
-            response_data = self.http_request_data(url)
-            young_girl_video_url = response_data.get("data")
-            logger.debug(f"get moyu video url:{young_girl_video_url}")
-            return young_girl_video_url
-        except Exception as err:
-            logger.error(f"其他错误: {err}")
+            logger.error(f"获取视频出错: {err}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
 
     def constellation_check_keyword(self, content):
@@ -1811,9 +1864,10 @@ class sakuraTools(Plugin):
         elif self.moyu_check_keyword(content):
             logger.debug("[sakuraTools] 摸鱼日历")
             context = e_context["context"]
-            reply = Reply(ReplyType.TEXT, "🐟正在为您获取摸鱼日历，请稍候...")
-            channel = e_context["channel"]
-            channel.send(reply, context)
+            if self.channel_type != "wechatmp":
+                reply = Reply(ReplyType.TEXT, "🐟正在为您获取摸鱼日历，请稍候...")
+                channel = e_context["channel"]
+                channel.send(reply, context)
             reply = Reply()
             # 获取摸鱼日历
             moyu_image_io = self.moyu_request(self.MOYU_URL)
@@ -1825,9 +1879,10 @@ class sakuraTools(Plugin):
         elif self.acg_check_keyword(content):
             logger.debug("[sakuraTools] 二次元")
             context = e_context["context"]
-            reply = Reply(ReplyType.TEXT, "🎨正在为您获取二次元小姐姐，请稍候...")
-            channel = e_context["channel"]
-            channel.send(reply, context)
+            if self.channel_type != "wechatmp":
+                reply = Reply(ReplyType.TEXT, "🎨正在为您获取二次元小姐姐，请稍候...")
+                channel = e_context["channel"]
+                channel.send(reply, context)
             reply = Reply()
             # 获取二次元小姐姐
             acg_image_url = self.acg_request(self.ACG_URL)
@@ -1849,28 +1904,15 @@ class sakuraTools(Plugin):
         elif self.young_girl_check_keyword(content):
             logger.debug("[sakuraTools] 小姐姐")
             context = e_context["context"]
-            reply = Reply(ReplyType.TEXT, "🎞️正在为您获取小姐姐视频，请稍候...")
-            channel = e_context["channel"]
-            channel.send(reply, context)
+            if self.channel_type != "wechatmp":
+                reply = Reply(ReplyType.TEXT, "🎞️正在为您获取小姐姐视频，请稍候...")
+                channel = e_context["channel"]
+                channel.send(reply, context)
             reply = Reply()
             # 获取小姐姐视频
             young_girl_video_url = self.young_girl_request(random.choice(self.YOUNG_GIRL_URL))
             reply.type = ReplyType.VIDEO_URL if young_girl_video_url else ReplyType.TEXT
             reply.content = young_girl_video_url if young_girl_video_url else "获取小姐姐视频失败啦，待会再来吧~🐾"
-            e_context['reply'] = reply
-            # 事件结束，并跳过处理context的默认逻辑
-            e_context.action = EventAction.BREAK_PASS
-        elif self.moyu_video_check_keyword(content):
-            logger.debug("[sakuraTools] 摸鱼视频")
-            context = e_context["context"]
-            reply = Reply(ReplyType.TEXT, "🐟正在为您获取摸鱼视频，请稍候...")
-            channel = e_context["channel"]
-            channel.send(reply, context)
-            reply = Reply()
-            # 获取摸鱼视频
-            moyu_video_url = self.moyu_video_request(self.MOYU_VIDEO_URL)
-            reply.type = ReplyType.VIDEO_URL if moyu_video_url else ReplyType.TEXT
-            reply.content = moyu_video_url if moyu_video_url else "获取摸鱼视频失败啦，待会再来吧~🐾"
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
@@ -1926,9 +1968,10 @@ class sakuraTools(Plugin):
         elif self.newspaper_check_keyword(content):
             logger.debug("[sakuraTools] 60s早报")
             context = e_context["context"]
-            reply = Reply(ReplyType.TEXT, "📰正在为您获取早报中，请稍候...")
-            channel = e_context["channel"]
-            channel.send(reply, context)
+            if self.channel_type != "wechatmp":
+                reply = Reply(ReplyType.TEXT, "📰正在为您获取早报中，请稍候...")
+                channel = e_context["channel"]
+                channel.send(reply, context)
             reply = Reply()
             # 获取早报
             newspaper_image_io = self.newspaper_request(self.NEWSPAPER_URL)
@@ -2037,9 +2080,10 @@ class sakuraTools(Plugin):
         elif self.mei_hua_yi_shu_check_keyword(content):
             logger.debug("[sakuraTools] 梅花易数")
             context = e_context["context"]
-            reply = Reply(ReplyType.TEXT, "🔮正在为您占卜中，请稍候...")
-            channel = e_context["channel"]
-            channel.send(reply, context)
+            if self.channel_type != "wechatmp":
+                reply = Reply(ReplyType.TEXT, "🔮正在为您占卜中，请稍候...")
+                channel = e_context["channel"]
+                channel.send(reply, context)
             # 获取session_id
             session_id = e_context["context"]["session_id"]
             reply = Reply()
