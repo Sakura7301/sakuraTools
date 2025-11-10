@@ -28,10 +28,10 @@
 - **虫部落**:获取虫部落今日热门。
 - **疯狂星期四**: 获取一条一条随机疯四文案。
 - **网抑云**: 获取网抑云热评。
-- **抽卡**: 获取带有解读的单张塔罗牌。
 - **抽牌**: 抽取单张塔罗牌。
 - **三牌阵**: 抽取塔罗牌三牌阵。
 - **十字牌阵**: 抽取塔罗牌十字牌阵。
+- **解读**: 解读最近5分钟内的塔罗牌结果（需先抽牌）。
 - **黄历**: 获取黄历。
 - **抽签**: 抽取真武灵签。
 - **卦图+卦名**: 获取指定卦图。
@@ -58,7 +58,6 @@
     "chongbuluo_keyword": ["虫部落"],
     "kfc_keyword":["肯德基","kfc","KFC","疯狂星期四"],
     "wyy_keyword":["网抑云", "wyy"],
-    "draw_card_keyword":["抽卡"],
     "newspaper_keyword": ["日报","早报","速读报","快报"],
     "tarot_single_keyword":["抽牌", "抽一张牌"],
     "tarot_three_keyword":["三牌阵","三张牌阵","过去-现在-未来阵"],
@@ -90,8 +89,6 @@
 ![image](https://github.com/user-attachments/assets/e5db198d-3190-450e-955d-93ffec93fbe9)
 #### 小姐姐视频
 ![image](https://github.com/user-attachments/assets/92bbf9d6-4b00-44b1-9402-550f9ce13c8f)
-#### 美女视频
-![image](https://github.com/user-attachments/assets/969ec749-981b-40e9-8fbd-9d442f4dbd91)
 #### 虫部落热搜
 ![image](https://github.com/user-attachments/assets/bc6d4650-fe42-45d5-b521-bac741f14baa)
 #### 疯狂星期四文案
@@ -105,6 +102,7 @@
 #### 塔罗牌
 ![image](https://github.com/user-attachments/assets/f495c476-cc99-407c-89f9-d9828651ae5a)
 ![image](https://github.com/user-attachments/assets/a7cd8eb8-e801-4fac-ab54-b1810ab99ca5)
+![image](https://github.com/user-attachments/assets/931a302c-5ef1-43c3-a801-bb483500dccb)
 #### 黄历
 ![image](https://github.com/user-attachments/assets/28b3c75a-41b1-48ea-b40c-2b21ec3e90f0)
 #### 真武灵签
