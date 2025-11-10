@@ -5,6 +5,7 @@ import time
 import json
 import random
 import plugins
+import sqlite3
 import requests
 from plugins import *
 import concurrent.futures
@@ -14,6 +15,7 @@ from PIL import Image, ImageDraw
 from bridge.bridge import Bridge
 from bridge.context import ContextType, Context
 from bridge.reply import Reply, ReplyType
+from datetime import datetime, timedelta
 from plugins.sakuraTools.meihuayishu import MeiHuaXinYi
 from plugins.sakuraTools.meihuayishu import GetGuaShu
 from plugins.sakuraTools.meihuayishu import FormatZhanBuReply
@@ -64,6 +66,13 @@ class sakuraTools(Plugin):
         if not self.config:
             self.config = self._load_config_template()
 
+        # 加载解读关键字
+        self.interpretation_keyword = self.config.get("interpretation_keyword", [])
+        
+        # 初始化数据库
+        self.db_path = "./plugins/sakuraTools/data/tarot_records.db"
+        self.init_database()
+
         # 加载图片临时目录
         self.image_tmp_path = "./plugins/sakuraTools/tmp"
         # 加载塔罗牌目录
@@ -94,8 +103,6 @@ class sakuraTools(Plugin):
         self.newspaper_keyword = self.config.get("newspaper_keyword", [])
         # 加载随机表情包关键字(可能这样子更人性化一些？)
         self.meme_keyword = self.config.get("meme_keyword", [])
-        # 加载抽卡关键字
-        self.draw_card_keyword = self.config.get("draw_card_keyword", [])
         # 加载运势关键字
         self.fortune_keyword = self.config.get("fortune_keyword", [])
         # 加载塔罗牌单抽牌关键字
@@ -216,6 +223,133 @@ class sakuraTools(Plugin):
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         logger.info("[sakuraTools] 插件初始化完毕")
 
+    def init_database(self):
+        """
+            初始化数据库，创建塔罗牌记录表（自动创建目录和数据库文件）
+        """
+        try:
+            # 获取数据库文件所在目录
+            db_dir = os.path.dirname(self.db_path)
+            
+            # 确保目录存在
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir, exist_ok=True)
+                logger.debug(f"[sakuraTools] 创建数据库目录: {db_dir}")
+            
+            # 检查数据库文件是否存在
+            db_exists = os.path.exists(self.db_path)
+            
+            if not db_exists:
+                logger.debug(f"[sakuraTools] 数据库文件不存在，正在创建: {self.db_path}")
+            
+            # 连接数据库（如果不存在会自动创建）
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # 创建塔罗牌记录表
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS tarot_records (
+                    user_id TEXT PRIMARY KEY,
+                    card_result TEXT NOT NULL,
+                    card_type TEXT NOT NULL,
+                    timestamp TEXT NOT NULL
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            
+            if not db_exists:
+                logger.info(f"[sakuraTools] 数据库文件创建成功: {self.db_path}")
+            else:
+                logger.info("[sakuraTools] 数据库初始化完成")
+                
+        except Exception as e:
+            logger.error(f"[sakuraTools] 数据库初始化失败: {e}")
+            # 如果初始化失败，尝试删除可能损坏的数据库文件
+            if os.path.exists(self.db_path):
+                try:
+                    os.remove(self.db_path)
+                    logger.warning(f"[sakuraTools] 已删除损坏的数据库文件，请重启插件")
+                except Exception as del_err:
+                    logger.error(f"[sakuraTools] 无法删除损坏的数据库文件: {del_err}")
+
+    def save_tarot_result(self, user_id, card_result, card_type):
+        """
+        保存塔罗牌抽牌结果到数据库
+        
+        参数:
+            user_id: 用户ID
+            card_result: 抽牌结果（文字描述）
+            card_type: 牌阵类型（single/three/cross）
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # 获取当前时间戳
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 使用 REPLACE 实现覆盖旧记录
+            cursor.execute('''
+                REPLACE INTO tarot_records (user_id, card_result, card_type, timestamp)
+                VALUES (?, ?, ?, ?)
+            ''', (user_id, card_result, card_type, timestamp))
+            
+            conn.commit()
+            conn.close()
+            logger.debug(f"[sakuraTools] 保存塔罗牌记录成功: user_id={user_id}, type={card_type}")
+            return True
+        except Exception as e:
+            logger.error(f"[sakuraTools] 保存塔罗牌记录失败: {e}")
+            return False
+
+    def get_tarot_result(self, user_id, time_limit_minutes=5):
+        """
+        查询用户最近的塔罗牌抽牌结果
+        
+        参数:
+            user_id: 用户ID
+            time_limit_minutes: 时间限制（分钟），默认5分钟
+        
+        返回:
+            tuple: (card_result, card_type, timestamp) 或 None
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # 查询用户记录
+            cursor.execute('''
+                SELECT card_result, card_type, timestamp
+                FROM tarot_records
+                WHERE user_id = ?
+            ''', (user_id,))
+            
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                card_result, card_type, timestamp_str = result
+                # 解析时间戳
+                record_time = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                current_time = datetime.now()
+                
+                # 检查是否在时间限制内
+                if current_time - record_time <= timedelta(minutes=time_limit_minutes):
+                    logger.debug(f"[sakuraTools] 找到有效的塔罗牌记录: user_id={user_id}")
+                    return (card_result, card_type, timestamp_str)
+                else:
+                    logger.info(f"[sakuraTools] 塔罗牌记录已过期: user_id={user_id}")
+                    return None
+            else:
+                logger.info(f"[sakuraTools] 未找到塔罗牌记录: user_id={user_id}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"[sakuraTools] 查询塔罗牌记录失败: {e}")
+            return None
+
     def _load_config_template(self):
         logger.debug("[sakuraTools] No sakuraTools plugin config.json, use plugins/sakuraTools/config.json.template")
         try:
@@ -279,16 +413,17 @@ class sakuraTools(Plugin):
     def tarot_cross_cards_check_keyword(self, query):
         return query in  self.tarot_cross_keyword
 
-    def tarot_get_single_card(self, num=None):
+    def tarot_get_single_card(self, num=None, user_id=None):
         """
             塔罗牌 单抽牌
         """
         card_files = self.shuffle_tarot_cards()
-        draw_flag = self.generate_draw_flag()  # 生成抽牌标志
+        # 生成抽牌标志
+        draw_flag = self.generate_draw_flag()
 
         output_filename = "Single"
 
-        # 如果指定了牌位
+        # 抽牌逻辑（保持原有逻辑）
         if num is not None:
             if 0 <= num < len(card_files):
                 # 按指定位置抽牌
@@ -307,8 +442,16 @@ class sakuraTools(Plugin):
             card_name = self.get_card_name(selected_card)
             logger.info(f"抽取的牌为: {card_name} (标志: {draw_flag})")
 
-        # 根据抽牌标志处理图像
-        if draw_flag == 0:  # 逆位处理
+        # 生成文字描述
+        position = "逆位" if draw_flag == 0 else "正位"
+        card_description = f"单张塔罗牌：{card_name}（{position}）"
+        
+        # 保存到数据库
+        if user_id:
+            self.save_tarot_result(user_id, card_description, "single")
+
+        # 根据抽牌标志处理图像（保持原有逻辑）
+        if draw_flag == 0:
             logger.debug(f"抽到：{card_name}(逆位)")
             output_filename += f"_{card_name}逆"
         else:
@@ -344,14 +487,16 @@ class sakuraTools(Plugin):
 
         return open(output_path, 'rb')
 
-    def tarot_get_three_cards(self, query=None):
+    def tarot_get_three_cards(self, num=None, user_id=None):
         """
             塔罗牌 三牌阵
         """
         # 洗牌
         card_files = self.shuffle_tarot_cards()
-        selected_cards = []  # 用于保存选中的卡牌信息
+        # 用于保存选中的卡牌信息
+        selected_cards = []
         output_filename = "Three"
+        card_descriptions = []
 
         for i in range(3):
             # 生成抽牌标志
@@ -361,6 +506,9 @@ class sakuraTools(Plugin):
             card_name = self.get_card_name(selected_card)
             # 保存完整信息
             selected_cards.append((selected_card, card_name, draw_flag))
+            
+            position = "逆位" if draw_flag == 0 else "正位"
+            card_descriptions.append(f"{card_name}（{position}）")
 
             if draw_flag == 0:
                 # 逆位处理
@@ -373,7 +521,14 @@ class sakuraTools(Plugin):
 
         logger.info("抽取的三张牌为: " + ", ".join([f"{name}({'正位' if flag == 1 else '逆位'})" for _, name, flag in selected_cards]))
 
-        # 生成路径
+        # 生成文字描述
+        card_description = f"塔罗牌三牌阵：\n过去 - {card_descriptions[0]}\n现在 - {card_descriptions[1]}\n未来 - {card_descriptions[2]}"
+        
+        # 保存到数据库
+        if user_id:
+            self.save_tarot_result(user_id, card_description, "three")
+
+        # 生成图像（保持原有逻辑）
         output_filename += ".png"
         # 检查目录是否存在
         self.ensure_directory_exists(self.image_tmp_path)
@@ -429,7 +584,7 @@ class sakuraTools(Plugin):
             logger.debug(f"合成的三张牌图片已保存: {output_path}")
         return open(output_path, 'rb')
 
-    def tarot_get_cross_cards(self, query=None):
+    def tarot_get_cross_cards(self, num=None, user_id=None):
         """
             塔罗牌 十字牌阵
         """
@@ -438,6 +593,7 @@ class sakuraTools(Plugin):
         selected_cards = []
 
         output_filename = "Cross"
+        card_descriptions = []
 
         for i in range(5):
             # 生成抽牌标志
@@ -448,6 +604,9 @@ class sakuraTools(Plugin):
             card_name = self.get_card_name(selected_card)
             # 保存完整信息
             selected_cards.append((selected_card, card_name, draw_flag))
+            
+            position = "逆位" if draw_flag == 0 else "正位"
+            card_descriptions.append(f"{card_name}（{position}）")
 
             if draw_flag == 0:
                 # 逆位处理
@@ -460,7 +619,14 @@ class sakuraTools(Plugin):
 
         logger.info("抽取的五张牌为: " + ", ".join([f"{name}({'正位' if flag == 1 else '逆位'})" for _, name, flag in selected_cards]))
 
-        # 生成路径
+        # 生成文字描述
+        card_description = f"塔罗牌十字牌阵：\n中心（现状）- {card_descriptions[0]}\n上方（目标）- {card_descriptions[1]}\n下方（基础）- {card_descriptions[2]}\n左侧（过去）- {card_descriptions[3]}\n右侧（未来）- {card_descriptions[4]}"
+        
+        # 保存到数据库
+        if user_id:
+            self.save_tarot_result(user_id, card_description, "cross")
+
+        # 生成图像（保持原有逻辑）
         output_filename += ".png"
         # 检查目录是否存在
         self.ensure_directory_exists(self.image_tmp_path)
@@ -1081,29 +1247,6 @@ class sakuraTools(Plugin):
             logger.error(f"其他错误: {err}")
             return None
 
-    def draw_card_check_keyword(self, content):
-        """
-            检查抽卡关键字
-        """
-        # 检查关键词
-        return content in self.draw_card_keyword
-
-    def draw_card_request(self, url):
-        """
-            抽卡请求函数
-        """
-        try:
-
-            # http请求
-            response_data = self.http_request_data(url, "raw")
-
-            # 获取抽卡内容
-            logger.debug(f"get draw card image")
-            return self.download_image(None, "draw_card", response_data)
-        except Exception as err:
-            logger.error(f"其他错误: {err}")
-            return None
-
     def fortune_check_keyword(self, content):
         """
             检查运势关键字
@@ -1485,7 +1628,7 @@ class sakuraTools(Plugin):
         else:
             return 0
 
-    def tarot_request(self, num=int):
+    def tarot_request(self, num=int, user_id=None):
         """
             塔罗牌请求函数
         """
@@ -1493,18 +1636,130 @@ class sakuraTools(Plugin):
             # 检查抽牌分类
             if num == 1:
                 # 请求单张牌
-                return self.tarot_get_single_card()
+                return self.tarot_get_single_card(num, user_id)
             elif num == 3:
                 # 请求三牌阵
-                return self.tarot_get_three_cards()
+                return self.tarot_get_three_cards(num, user_id)
             elif num == 5:
                 # 请求十字牌阵
-                return self.tarot_get_cross_cards()
+                return self.tarot_get_cross_cards(num, user_id)
             else:
                 return None
         except Exception as err:
             logger.error(f"其他错误: {err}")
             return None
+
+    def interpretation_check_keyword(self, content):
+        """
+            检查解读关键字
+        """
+        return content in self.interpretation_keyword
+
+    def generate_interpretation_prompt(self, card_result, card_type):
+        """
+            生成塔罗牌解读的AI提示词
+            
+            参数:
+                card_result: 抽牌结果文字描述
+                card_type: 牌阵类型
+        """
+        type_desc = {
+            "single": "单张塔罗牌",
+            "three": "三牌阵（代表过去-现在-未来）",
+            "cross": "十字牌阵（代表中心现状-目标-基础-过去-未来）"
+        }
+        
+        prompt = f"""你是一位专业的塔罗牌占卜师，请为以下抽牌结果提供详细的解读：
+
+            抽牌类型：{type_desc.get(card_type, "未知牌阵")}
+            抽牌结果：
+            {card_result}
+
+            请从以下几个方面进行解读：
+            1. 每张牌的基本含义（正位/逆位的解释）
+            2. 牌与牌之间的关联和整体寓意
+            3. 对于当前问题的建议和指引
+            4. 需要注意的事项
+
+            请用温和、充满智慧的语气进行解读，给予积极正面的引导。解读内容要详细、有深度，但避免过于抽象，要让人容易理解。解读内容不超过300字。"""
+
+        return prompt
+    
+    def remove_interpretation_prefix(self, text):
+        """
+        去除"解读"相关的前缀
+        
+        参数:
+            text: 原始字符串（必须是str类型）
+        
+        返回:
+            去除前缀后的字符串
+        """
+        # 确保text是字符串类型
+        if not isinstance(text, str):
+            logger.warning(f"[sakuraTools] remove_interpretation_prefix 接收到非字符串类型: {type(text)}")
+            return str(text)
+        
+        # 定义可能的前缀
+        prefixes = ["解读：", "解读:", "解读 ", "解读"]
+        
+        # 去除前后空格
+        text = text.strip()
+        
+        # 尝试匹配每个前缀
+        for prefix in prefixes:
+            if text.startswith(prefix):
+                # 去除前缀后再去除可能的空格
+                return text[len(prefix):].lstrip()
+        
+        # 没有匹配到前缀，返回原文
+        return text
+    
+    def tarot_interpretation_request(self, session_id, user_id):
+        """
+            处理塔罗牌解读请求
+            
+            参数:
+                session_id: 会话ID
+                user_id: 用户ID
+            
+            返回:
+                str: 解读结果或错误提示
+        """
+        try:
+            # 查询用户最近的抽牌记录
+            tarot_record = self.get_tarot_result(user_id, time_limit_minutes=5)
+            
+            if not tarot_record:
+                return "哎呀，我没有找到你最近5分钟内的抽牌记录哦~😅\n请先使用【抽牌】、【三牌阵】或【十字牌阵】进行占卜，然后再来找我解读叭！💫"
+            
+            card_result, card_type, timestamp = tarot_record
+            
+            # 生成解读提示词
+            prompt = self.generate_interpretation_prompt(card_result, card_type)
+            
+            try:
+                # 使用 ThreadPoolExecutor 来设置超时
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(self.get_reply, session_id, prompt)
+                    # 设置超时时间为60秒
+                    reply_content = future.result(timeout=60)
+                
+                # 格式化返回结果
+                result = f"🔮 塔罗牌解读 🔮\n\n"
+                result += f"📅 抽牌时间：{timestamp}\n\n"
+                result += f"🎴 抽牌结果：\n{card_result}\n\n"
+                result += f"✨ 占卜解读：\n{self.remove_interpretation_prefix(reply_content)}"
+                
+                return result
+                
+            except concurrent.futures.TimeoutError:
+                logger.warning(f"[sakuraTools] [塔罗牌解读] session_id={session_id}, 处理超时")
+                return "占卜解读超时啦~😕\n请稍后再试，或者重新抽牌后再来找我解读叭~🌟"
+                
+        except Exception as e:
+            logger.error(f"[sakuraTools] [塔罗牌解读] 发生错误: {e}")
+            return f"哎呀，解读过程中出现了一些问题~😓\n错误信息：{str(e)}"
 
     def huang_li_check_keyword(self, content):
         """
@@ -1827,9 +2082,13 @@ class sakuraTools(Plugin):
             return
 
         # 获取消息内容并去除首尾空格
-        content = e_context["context"].content.strip()
+        message = e_context["context"]
+        content = message.content.strip()
+        current_id = message.kwargs['receiver']
+
         # 预定义塔罗牌选择类型
         tarot_num = 0
+
         # 检查缓存文件是否需要清除，默认每天00:00清除
         self.check_and_delete_files()
 
@@ -1984,9 +2243,25 @@ class sakuraTools(Plugin):
             logger.debug("[sakuraTools] 塔罗牌")
             reply = Reply()
             # 获取塔罗牌图片
-            tarot_image_io = self.tarot_request(tarot_num)
+            tarot_image_io = self.tarot_request(tarot_num, current_id)
             reply.type = ReplyType.IMAGE if tarot_image_io else ReplyType.TEXT
             reply.content = tarot_image_io if tarot_image_io else "获取塔罗牌失败，待会再来吧~🐾"
+            e_context['reply'] = reply
+            # 事件结束，并跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
+        elif self.interpretation_check_keyword(content):
+            logger.debug("[sakuraTools] 塔罗牌解读")
+            context = e_context["context"]
+            # 发送等待提示（除了公众号）
+            if self.channel_type != "wechatmp":
+                reply = Reply(ReplyType.TEXT, "🔮正在为您解读塔罗牌，请稍候...")
+                channel = e_context["channel"]
+                channel.send(reply, context)
+            # 获取session_id
+            session_id = context.get("session_id")
+            reply = Reply()
+            reply.type = ReplyType.TEXT
+            reply.content = self.tarot_interpretation_request(session_id, current_id)
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
@@ -2057,20 +2332,10 @@ class sakuraTools(Plugin):
             e_context['reply'] = reply
             # 事件结束，并跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
-        elif self.draw_card_check_keyword(content):
-            logger.debug("[sakuraTools] 抽卡")
-            reply = Reply()
-            # 获取抽卡结果
-            draw_card_image_io = self.draw_card_request(self.DRAW_CARD_URL)
-            reply.type = ReplyType.IMAGE if draw_card_image_io else ReplyType.TEXT
-            reply.content = draw_card_image_io if draw_card_image_io else "抽卡失败啦，待会再来吧~🐾"
-            e_context['reply'] = reply
-            # 事件结束，并跳过处理context的默认逻辑
-            e_context.action = EventAction.BREAK_PASS
         elif self.fortune_check_keyword(content):
             logger.debug("[sakuraTools] 运势")
             reply = Reply()
-            # 获取抽卡结果
+            # 获取运势结果
             fortune_image_io = self.fortune_request(self.FORTUNE_URL)
             reply.type = ReplyType.IMAGE if fortune_image_io else ReplyType.TEXT
             reply.content = fortune_image_io if fortune_image_io else "获取运势失败啦，待会再来吧~🐾"
@@ -2096,5 +2361,5 @@ class sakuraTools(Plugin):
 
     def get_help_text(self, **kwargs):
         """获取帮助文本"""
-        help_text = "\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n -[黄历]：获取今日黄历\n- [抽牌]：抽取单张塔罗牌\n- [三牌阵]：抽取塔罗牌三牌阵\n- [十字牌阵]：抽取塔罗牌十字牌阵\n- [每日一卦]：获取随机卦图\n- [卦图+卦名]：获取对应卦图\n- [微博热搜]：获取微博热搜\n- [百度热搜]：获取百度热搜\n- [AI搜索]：输入 `搜索 + 关键词`可以获取整合信息\n- [AI画图]：输入`画一个 + 关键字`可以生成ai图片\n- [梅花易数] 输入`算算` + `你想问的问题` + `三位数字`即可获得占卜结果\n- [抽卡]：获取带有解释的塔罗牌。\n- [运势]：获取你的运势。\n"
+        help_text = "\n- [早报]：获取今日早报\n- [舔狗日记]：获取一则舔狗日记\n- [笑话]：获得一则笑话\n- [摸鱼日历]：获取摸鱼日历\n- [纸片人老婆]：获取一张纸片人老婆图片\n- [小姐姐]：获取一条小姐姐视频\n- [星座名]：获取今日运势\n- [虫部落]：获取虫部落今日热门\n- [kfc]：获取一条一条随机疯四文案\n- [网抑云]：获取一条网易云评论\n -[黄历]：获取今日黄历\n- [抽牌]：抽取单张塔罗牌\n- [三牌阵]：抽取塔罗牌三牌阵\n- [十字牌阵]：抽取塔罗牌十字牌阵\n- [解读]：解读最近5分钟内的塔罗牌结果（需先抽牌）\n- [每日一卦]：获取随机卦图\n- [卦图+卦名]：获取对应卦图\n- [微博热搜]：获取微博热搜\n- [百度热搜]：获取百度热搜\n- [AI搜索]：输入 `搜索 + 关键词`可以获取整合信息\n- [AI画图]：输入`画一个 + 关键字`可以生成ai图片\n- [梅花易数] 输入`算算` + `你想问的问题` + `三位数字`即可获得占卜结果\n- [运势]：获取你的运势。\n"
         return help_text
